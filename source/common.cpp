@@ -1,4 +1,5 @@
 #include "common.h"
+using namespace std;
 
 template <typename T>
 void display(vector<T> &array){
