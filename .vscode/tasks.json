@@ -67,12 +67,13 @@
 				"-fexceptions",
 				"-DNDEBUG",
 				"-stdlib=libc++",
+				"-std=c++11",
 				"-L/Applications/CPLEX_Studio2211/cplex/lib/arm64_osx/static_pic",
 				"-L/Applications/CPLEX_Studio2211/concert/lib/arm64_osx/static_pic",
 				"${workspaceFolder}/objects/*.o",
 				"${fileDirname}/*.o",
 				"-o",
-				"${fileDirname}/${fileBasenameNoExtension}",
+				"${workspaceFolder}/${fileBasenameNoExtension}",
 				"-lconcert",
 				"-lilocplex",
 				"-lcplex",
@@ -83,6 +84,9 @@
 				"-framework",
 				"IOKit"
 			],
+			"options": {
+				"cwd": "${fileDirname}"
+			},
 			"group": "build"
 		},
 		{
@@ -97,6 +101,7 @@
 				"-fexceptions",
 				"-DNDEBUG",
 				"-stdlib=libc++",
+				"-std=c++11",
 				"-I/Applications/CPLEX_Studio2211/cplex/include",
 				"-I/Applications/CPLEX_Studio2211/concert/include",
 				"-I${workspaceFolder}/include",
@@ -126,7 +131,7 @@
 				"-L/Applications/CPLEX_Studio2211/concert/lib/arm64_osx/static_pic",
 				"${fileBasenameNoExtension}.o",
 				"-o",
-				"${fileBasenameNoExtension}",
+				"${workspaceFolder}/${fileBasenameNoExtension}",
 				"-lconcert",
 				"-lilocplex",
 				"-lcplex",
@@ -137,6 +142,9 @@
 				"-framework",
 				"IOKit"
 			],
+			"options": {
+				"cwd": "${fileDirname}"
+			},
 			"group": "build"
 		},
 		{

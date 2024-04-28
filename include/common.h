@@ -8,8 +8,8 @@
 //void display(vector<double> &array);
 template <typename T> void display(std::vector<T> &array);
 template <typename T> void display(std::vector<T> &array, std::string name);
-template <typename T> void display(std::vector<std::vector<T>> &matrix);
-template <typename T> void display(std::vector<std::vector<T>> &matrix, std::string name);
+template <typename T> void display(std::vector<std::vector<T> > &matrix);
+template <typename T> void display(std::vector<std::vector<T> > &matrix, std::string name);
 void display(int*, int);
 void display(double*, int);
 void display(int**, int, int);

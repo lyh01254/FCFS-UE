@@ -14,9 +14,9 @@ void read(std::vector<int> &para, std::string file_name, int r_index0, int c_ind
 
 void read(std::vector<double> &para, std::string file_name, int r_index0, int c_index0, int r_index1, int c_index1);
 
-void read(std::vector<std::vector<int>> &para, std::string file_name, int r_index0, int c_index0, int r_index1, int c_index1);
+void read(std::vector<std::vector<int> > &para, std::string file_name, int r_index0, int c_index0, int r_index1, int c_index1);
 
-void read(std::vector<std::vector<double>> &para, std::string file_name, int r_index0, int c_index0, int r_index1, int c_index1);
+void read(std::vector<std::vector<double> > &para, std::string file_name, int r_index0, int c_index0, int r_index1, int c_index1);
 
 #endif
 
