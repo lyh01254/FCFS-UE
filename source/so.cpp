@@ -12,14 +12,14 @@ vector<double> demand;
 vector<vector<double> > capacity;
 vector<double> cost;
 
-string file_name = "data/demo.csv";
+string file_name = "data/instance/100_15_5.csv";
 
 int main(){
     try{
         read(NbHotels, file_name, 0, 0);
         read(NbTypes, file_name, 0, 1);
         read(gamma, file_name, 0, 2);
-        read(demand, file_name, 1, 0, 1, NbHotels);
+        read(demand, file_name, 1, 0, 1, NbTypes-1);
         read(cost, file_name, 2, NbTypes, 1+NbHotels, NbTypes);
         read(capacity, file_name, 2, 0, 1+NbHotels, NbTypes-1);
     }catch(const char* msg){
@@ -47,7 +47,7 @@ int main(){
     //*Objective
     IloNumExpr expr_obj(env);
     for (int i = 0; i < NbHotels; i++){
-        for (int k = 0; k < NbHotels; k++){
+        for (int k = 0; k < NbTypes; k++){
             for (int w = 0; w < NbTypes; w++){
                 expr_obj += cost[i] * demand[k] * alpha[i][k][w];
                 if (w != k){
@@ -96,15 +96,64 @@ int main(){
     } else{
         cout << "SO is infeasible." << endl;
     }
+    // vector<vector<vector<double> > > cplex_assign(NbHotels, vector<vector<double> > (NbTypes, vector<double> (NbTypes, 0)));
+    // for (int i = 0; i < NbHotels; i++){
+    //     for (int k = 0; k < NbTypes; k++){
+    //         for (int w = 0; w < NbTypes; w++){
+    //             cplex_assign[i][k][w] = so_cplex.getValue(alpha[i][k][w]) * demand[k];
+    //         }
+    //     }
+    //     display(cplex_assign[i], "cplex_assign i = " + to_string(i));
+    // }
+
     env.end();
 
     vector<double> Q_k(demand);
     vector<vector<double> > C(capacity);
     vector<int> cost_index(NbHotels);
-    iota(cost_index.begin(), cost_index.end(),0);
+    vector<vector<vector<double> > > assign(NbHotels, vector<vector<double> > (NbTypes, vector<double> (NbTypes, 0)));
+    iota(cost_index.begin(), cost_index.end(), 0);
     sort(cost_index.begin(), cost_index.end(), [&](int i, int j){return cost[i] < cost[j];});
     display(cost_index, "cost_index");
-    cout << __cplusplus << endl;
+    double sum_Q = accumulate(Q_k.begin(), Q_k.end(), 0);
+    auto it1 = cost_index.begin();
+    auto it2 = cost_index.begin();
+    double so_cost = 0;
+    while (sum_Q > 0){
+        if (it1 != cost_index.end() && cost[*it1] < cost[*it2]+gamma){
+            //* *it1 = i_star
+            for (int w = 0; w < NbTypes; w++){
+                if (C[*it1][w] > 0){
+                    assign[*it1][w][w] = min(Q_k[w], C[*it1][w]);
+                    C[*it1][w] -= assign[*it1][w][w];
+                    Q_k[w] -= assign[*it1][w][w];
+                    sum_Q -= assign[*it1][w][w];
+                    so_cost += assign[*it1][w][w] * cost[*it1];
+                }
+            }
+            it1++;
+        } else {
+            //* *it2 = i_star
+            for (int w = 0; w < NbTypes; w++){
+                if (C[*it2][w] > 0){
+                    for (int k = 0; k < NbTypes; k++){
+                        if (k != w && Q_k[k] > 0 && C[*it2][w] > 0){
+                            assign[*it2][k][w] = min(Q_k[k], C[*it2][w]);
+                            C[*it2][w] -= assign[*it2][k][w];
+                            Q_k[k] -= assign[*it2][k][w];
+                            sum_Q -= assign[*it2][k][w];
+                            so_cost += assign[*it2][k][w] * (cost[*it2] + gamma);
+                        }
+                    }
+                }
+            }
+            it2++;
+        }
+    }
+    cout << "so_cost = " << so_cost << endl;
+    // for (int i = 0; i < NbHotels; i++){
+    //     display(assign[i], "assignment i = " + to_string(i));
+    // }
 
     return 0;
 }
