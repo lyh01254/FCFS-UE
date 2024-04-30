@@ -130,6 +130,7 @@
 				"-L/Applications/CPLEX_Studio2211/cplex/lib/arm64_osx/static_pic",
 				"-L/Applications/CPLEX_Studio2211/concert/lib/arm64_osx/static_pic",
 				"${fileBasenameNoExtension}.o",
+				"${workspaceFolder}/objects/*.o",
 				"-o",
 				"${workspaceFolder}/${fileBasenameNoExtension}",
 				"-lconcert",
