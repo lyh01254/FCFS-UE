@@ -40,8 +40,10 @@ int main(int argc, char* argv[]){
             Capacity_by_k[k] += capacity[i][k];
         }
     }
+    gamma = 1;
     display(demand, "Demand");
     display(cost, "Cost");
+    cout << "gamma = " << gamma << endl;
     display(capacity, "Capacity");
     display(Capacity_by_k, "Capacity_by_k");
     cout << "Data input passes." << endl;
@@ -76,17 +78,20 @@ int main(int argc, char* argv[]){
     cout << "Variables done!" << endl;
     //*Objective
     IloNumExpr expr_obj(env);
+    IloNumExpr expr_misplacement(env);
     for (int i = 0; i < NbHotels; i++){
         for (int k = 0; k < NbTypes; k++){
             for (int w = 0; w < NbTypes; w++){
                 expr_obj += cost[i] * demand[k] * alpha[i][k][w];
                 if (w != k){
                     expr_obj += gamma * demand[k] * alpha[i][k][w];
+                    expr_misplacement += demand[k] * alpha[i][k][w];
                 }
             }
         }
     }
     IloObjective obj(env, expr_obj);
+    IloObjective obj_misplacement(env, expr_misplacement);
     ue_model.add(obj);
     so_model.add(obj);
     cout << "Objective done!" << endl;
@@ -183,20 +188,75 @@ int main(int argc, char* argv[]){
     //*cplex
     IloCplex ue_cplex(ue_model);
     IloCplex so_cplex(so_model);
-    obj.setSense(IloObjective::Minimize);
-    ue_cplex.exportModel("ue_model.lp");
-    obj.setSense(IloObjective::Minimize);
-    so_cplex.exportModel("so_model.lp");
+    obj.setSense(IloObjective::Maximize);
+    ue_cplex.setOut(env.getNullStream());
+    //ue_cplex.exportModel("ue_model.lp");
+    //obj.setSense(IloObjective::Minimize);
+    //so_cplex.exportModel("so_model.lp");
     if (ue_cplex.solve()){
-        cout << "UE value = " << ue_cplex.getObjValue() << endl;
+        if (obj.getSense() == 1){
+            cout << "Best UE = " << ue_cplex.getObjValue() << endl;
+        } else {
+            cout << "Worst UE = " << ue_cplex.getObjValue() << endl;
+        }
     } else{
         cout << "UE is infeasible." << endl;
     }
-    if (so_cplex.solve()){
-        cout << "SO value = " << so_cplex.getObjValue() << endl;
-    } else{
-        cout << "SO is infeasible." << endl;
+    double misplaced_demand = 0;
+    for (int i = 0; i < NbHotels; i++){
+        for (int k = 0; k < NbTypes; k++){
+            for (int w = 0; w < NbTypes; w++){
+                if (k != w){
+                    misplaced_demand += ue_cplex.getValue(alpha[i][k][w])*demand[k];
+                }
+            }
+        }
     }
+    cout << "Misplaced demand at worst UE = " << misplaced_demand << endl;
+
+    ue_model.remove(obj);
+    ue_model.add(obj_misplacement);
+    obj_misplacement.setSense(IloObjective::Maximize);
+    if (ue_cplex.solve()){
+    if (obj.getSense() == 1){
+        cout << "Best misplacement = " << ue_cplex.getObjValue() << endl;
+    } else {
+        cout << "Worst misplacement = " << ue_cplex.getObjValue() << endl;
+    }
+    } else{
+        cout << "UE is infeasible." << endl;
+    }
+
+    ue_model.add(expr_misplacement >= ue_cplex.getObjValue());
+    ue_model.remove(obj_misplacement);
+    ue_model.add(obj);
+    if (ue_cplex.solve()){
+        if (obj.getSense() == 1){
+            cout << "Best UE = " << ue_cplex.getObjValue() << endl;
+        } else {
+            cout << "Worst UE = " << ue_cplex.getObjValue() << endl;
+        }
+    } else{
+        cout << "UE is infeasible." << endl;
+    }
+
+    misplaced_demand = 0;
+    for (int i = 0; i < NbHotels; i++){
+    for (int k = 0; k < NbTypes; k++){
+        for (int w = 0; w < NbTypes; w++){
+            if (k != w){
+                misplaced_demand += ue_cplex.getValue(alpha[i][k][w])*demand[k];
+            }
+        }
+    }
+    }
+    cout << "Misplaced demand at worst UE = " << misplaced_demand << endl;
+
+    // if (so_cplex.solve()){
+    //     cout << "SO value = " << so_cplex.getObjValue() << endl;
+    // } else{
+    //     cout << "SO is infeasible." << endl;
+    // }
     // vector<vector<vector<double> > > cplex_assign(NbHotels, vector<vector<double> > (NbTypes, vector<double> (NbTypes, 0)));
     // for (int i = 0; i < NbHotels; i++){
     //     for (int k = 0; k < NbTypes; k++){
@@ -207,6 +267,7 @@ int main(int argc, char* argv[]){
     //     display(cplex_assign[i], "cplex_assign i = " + to_string(i));
     // }
 
+
     env.end();
 
     vector<double> Q_k(demand);
@@ -215,7 +276,7 @@ int main(int argc, char* argv[]){
     vector<vector<vector<double> > > assign(NbHotels, vector<vector<double> > (NbTypes, vector<double> (NbTypes, 0)));
     iota(cost_index.begin(), cost_index.end(), 0);
     sort(cost_index.begin(), cost_index.end(), [&](int i, int j){return cost[i] < cost[j];});
-    display(cost_index, "cost_index");
+    //display(cost_index, "cost_index");
     double sum_Q = accumulate(Q_k.begin(), Q_k.end(), 0);
     auto it1 = cost_index.begin();
     auto it2 = cost_index.begin();
@@ -251,7 +312,7 @@ int main(int argc, char* argv[]){
             it2++;
         }
     }
-    cout << "greedy_cost = " << so_cost << endl;
+    //cout << "greedy_cost = " << so_cost << endl;
     // for (int i = 0; i < NbHotels; i++){
     //     display(assign[i], "assignment i = " + to_string(i));
     // }
