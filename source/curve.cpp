@@ -211,7 +211,174 @@ void inf_convolute(std::vector<Curve>& IC_curves, const Curve& V, const Curve& v
 };
 
 void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves){
-    
+    std::vector<int> idx(IC_curves.size(), 0); //iterative index of ends for each IC_curve
+    int idx_0 = 0;
+    int idx_raised = 0; //iterative index ends for the raised_V
+    int End_0 = IC_curves[0].NbSegs;
+    int End_raised = raised_V.NbSegs;
+    //* todo: first join the first IC_curve and raised_V, and get the based_V
+    std::vector<double> based_x;
+    std::vector<double> based_y;
+    std::vector<double> based_slopes;
+    double incumbent_y = IC_curves[0].y[0];
+    double incumbent_x = IC_curves[0].x[0];
+    based_x.push_back(0);
+    based_y.push_back(incumbent_y);
+    based_slopes.push_back(IC_curves[0].slopes[0]);
+    bool raised_incumbent = false; //indicate whether the incumbent is raised_V
+    double k1, k2, x1, y1, x2, y2;
+    while (true){ 
+        if (raised_incumbent) { //incumbent segment is raised_V
+            while (idx_0 < End_0 && IC_curves[0].y[idx_0+1] <= incumbent_y){ //*Note: update non-incumbent segment idx based on incumbent y
+                ++idx_0;
+            }
+            if (idx_0 == End_0) break;
+            if (IC_curves[0].x[idx_0] < raised_V.x[idx_raised+1]){ //necessary condition for intersect 
+                x2 = IC_curves[0].x[idx_0];
+                y2 = IC_curves[0].y[idx_0];
+                k2 = IC_curves[0].slopes[idx_0];
+                x1 = raised_V.x[idx_raised+1];
+                y1 = raised_V.y[idx_raised+1];
+                k1 = raised_V.slopes[idx_raised];
+                if (y1 - y2 >= k2 * (x1 - x2)){ //confirmed intersect
+                    if (k1 != k2){
+                        //* todo: compute intersect point, record an incumbent y, 
+                        incumbent_x = (k1*x1 - k2*x2 +y2 - y1) / (k1-k2);
+                        incumbent_y = k1*incumbent_x + y1 - k1*x1;
+                        if (incumbent_y == based_y.back()){ // swap
+                            raised_incumbent == false;
+                        } else {
+                            //* todo: else push back the confirmed section (check extension).
+                            if (k1 != based_slopes.back()){
+                                based_x.push_back(incumbent_x);
+                                based_y.push_back(incumbent_y);
+                                based_slopes.push_back(k1);
+                            } else {
+                                based_x.back() = incumbent_x;
+                                based_y.back() = incumbent_y;
+                            } 
+                        } 
+                    } else {// the two segments overlap partially
+                        //* todo: push back the shorter segment, update incumbent y. (check extension)
+                        incumbent_y = std::min(y1,y2);
+                        if (k1 != based_slopes.back()){
+                            based_x.push_back(std::min(x1,x2));
+                            based_y.push_back(incumbent_y);
+                            based_slopes.push_back(k1);
+                        } else {
+                            based_x.back() = std::min(x1,x2);
+                            based_y.back() = incumbent_y;
+                        }
+                    }
+                } else { //will not intersect;
+                    //* todo: push back the whole incumbent segment (extension check)
+                    incumbent_y = y1;
+                    if (k1 != based_slopes.back()){
+                        based_x.push_back(x1);
+                        based_y.push_back(incumbent_y);
+                        based_slopes.push_back(k1);
+                    } else {
+                        based_x.back() = x1;
+                        based_y.back() = incumbent_y;
+                    }
+                    ++idx_raised;
+                }
+            } else { //will not intersect;
+                //* todo: push back the incumbent segment, update incumbent y (no need for extension check)
+                incumbent_y = y1;
+                based_x.push_back(x1);
+                based_y.push_back(incumbent_y);
+                based_slopes.push_back(k1);
+                ++idx_raised;
+            }
+        }else{ //incumbent segment is IC_curves[0]
+            while (idx_raised < End_raised && raised_V.y[idx_raised+1] <= incumbent_y){ //*Note: update non-incumbent segment idx based on incumbent y
+                ++idx_raised;
+            }
+            //if (idx_raised == End_raised) break; //* impossible
+            if (raised_V.x[idx_raised] < IC_curves[0].x[idx_0+1]){ //necessary condition for intersect 
+                x1 = IC_curves[0].x[idx_0+1];
+                y1 = IC_curves[0].y[idx_0+1];
+                k1 = IC_curves[0].slopes[idx_0];
+                x2 = raised_V.x[idx_raised];
+                y2 = raised_V.y[idx_raised];
+                k2 = raised_V.slopes[idx_raised];
+                if (y1 - y2 >= k2 * (x1 - x2)){ //confirmed intersect
+                    if (k1 != k2){
+                        //* todo: compute intersect point, record an incumbent y, 
+                        incumbent_x = (k1*x1 - k2*x2 +y2 - y1) / (k1-k2);
+                        incumbent_y = k1*incumbent_x + y1 - k1*x1;
+                        if (incumbent_y == based_y.back()){
+                            raised_incumbent = true;
+                        }else {
+                            //* todo: else push back the confirmed section (check extension).
+                            if (k1 != based_slopes.back()){
+                                based_x.push_back(incumbent_x);
+                                based_y.push_back(incumbent_y);
+                                based_slopes.push_back(k1);
+                            } else {
+                                based_x.back() = incumbent_x;
+                                based_y.back() = incumbent_y;
+                            }                             
+                        }
+                    } else {// the two segments overlap partially
+                        //* todo: push back the shorter segment, update incumbent y.
+                        incumbent_y = std::min(y1,y2);
+                        if (k1 != based_slopes.back()){
+                            based_x.push_back(std::min(x1,x2));
+                            based_y.push_back(incumbent_y);
+                            based_slopes.push_back(k1);
+                        } else {
+                            based_x.back() = std::min(x1,x2);
+                            based_y.back() = incumbent_y;
+                        }                        
+                    }
+                } else { //will not intersect;
+                    //* todo: push back the whole incumbent segment (extension check?)
+                    incumbent_y = y1;
+                    if (k1 != based_slopes.back()){
+                        based_x.push_back(x1);
+                        based_y.push_back(incumbent_y);
+                        based_slopes.push_back(k1);
+                    } else {
+                        based_x.back() = x1;
+                        based_y.back() = incumbent_y;
+                    }
+                    ++idx_0;
+                }
+            } else { //will not intersect;
+                //* todo: push back the incumbent segment, update incumbent y (no need for extension check)
+                incumbent_y = y1;
+                based_x.push_back(x1);
+                based_y.push_back(incumbent_y);
+                based_slopes.push_back(k1);
+                ++idx_0;
+            }            
+        }
+    }
+    while (idx_raised < End_raised){ // must have idx_0 == End_0
+        //* todo: add all remaining raised_V segments
+        based_x.push_back(raised_V.x[idx_raised+1]);
+        based_y.push_back(raised_V.y[idx_raised+1]);
+        based_slopes.push_back(raised_V.slopes[idx_raised]);
+        ++idx_raised;
+    }
+
+    //todo: then join the based_V with the remaining IC_curves
+    V.x[0] = based_x[0];
+    V.y[0] = based_y[0];
+    int incumbent = 0; //0 = based; i IC_curves[i]
+    while(true){
+        if (incumbent){
+            //todo: incumbent is the index of IC_curves
+
+        } else {
+            //todo: incumbent is the based one
+            for (int i = 1; i < IC_curves.size(); i++){
+                
+            }
+        }
+    }
 };
 
 void v2V(Curve& V, const Curve& v){
