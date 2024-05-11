@@ -260,13 +260,14 @@ void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves){
                         } 
                     } else {// the two segments overlap partially
                         //* todo: push back the shorter segment, update incumbent y. (check extension)
-                        incumbent_y = std::min(y1,y2);
+                        incumbent_y = std::min(y1,IC_curves[0].y[idx_0+1]);
+                        incumbent_x = std::min(x1,IC_curves[0].x[idx_0+1]);
                         if (k1 != based_slopes.back()){
-                            based_x.push_back(std::min(x1,x2));
+                            based_x.push_back(incumbent_x);
                             based_y.push_back(incumbent_y);
                             based_slopes.push_back(k1);
                         } else {
-                            based_x.back() = std::min(x1,x2);
+                            based_x.back() = incumbent_x;
                             based_y.back() = incumbent_y;
                         }
                     }
@@ -323,13 +324,14 @@ void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves){
                         }
                     } else {// the two segments overlap partially
                         //* todo: push back the shorter segment, update incumbent y.
-                        incumbent_y = std::min(y1,y2);
+                        incumbent_y = std::min(y1,raised_V.y[idx_raised+1]);
+                        incumbent_x = std::min(x1,raised_V.x[idx_raised+1]);
                         if (k1 != based_slopes.back()){
-                            based_x.push_back(std::min(x1,x2));
+                            based_x.push_back(incumbent_x);
                             based_y.push_back(incumbent_y);
                             based_slopes.push_back(k1);
                         } else {
-                            based_x.back() = std::min(x1,x2);
+                            based_x.back() = incumbent_x;
                             based_y.back() = incumbent_y;
                         }                        
                     }
@@ -368,12 +370,81 @@ void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves){
     V.x[0] = based_x[0];
     V.y[0] = based_y[0];
     int incumbent = 0; //0 = based; i IC_curves[i]
+    std::vector<int> idx(IC_curves.size(), 0);
+    int idx_based = 0;
+    bool pass; //true if no intersect with the incumbent, idx[incumbent] should ++
+    double temp_x, temp_y, candidate; //record closest intersect and the candidate incumbent
+    double incumbent_slope;
     while(true){
-        if (incumbent){
-            //todo: incumbent is the index of IC_curves
+        pass = true;
+        if (incumbent){//incumbent is the index of IC_curves
+            x1 = IC_curves[incumbent].x[idx[incumbent]+1];
+            y1 = IC_curves[incumbent].y[idx[incumbent]+1];
+            k1 = IC_curves[incumbent].slopes[idx[incumbent]];
+            incumbent_x = x1;
+            incumbent_slope = k1;
+            //todo: check based_V
+            if (based_x[idx_based] < x1){ //intersect possible
+                x2 = based_x[idx_based];
+                y2 = based_y[idx_based];
+                k2 = based_slopes[idx_based];
+                if (y1 - y2 >= k2 * (x1 - x2)){ //intersect confirmed
+                    pass = false;
+                    if (k1 != k2){ //there's a unique intersect
+                        //todo: calculate intersect and record it as temp_x, temp_y, temp_slope, candidate
+                        temp_x = (k1*x1 - k2*x2 +y2 - y1) / (k1-k2);
+                        if (temp_x != V.x.back()){ //
+                            if (temp_x < incumbent_x){
+                                incumbent_x = temp_x;
+                                incumbent_y = k1*temp_x + y1 - k1*x1;
+                                incumbent_slope = k2; 
+                            } else if (temp_x == incumbent_x) {
+                                incumbent_slope = std::max(incumbent_slope, k2);
+                            }
+                        } else { //update incumbent. must have k2 > incumbent_slope
+                            incumbent_slope = k2;
+                            incumbent = 0;
+                            //!to break
+                        }        
+                    } else { //overlap
+                        //todo: intersect is the min of (x1, based_V[idx_based+1])
+                    }
+                } else { //will not intersect
+                    //todo: pass
+                }
+            } else { //will not intersect
+                //todo: pass
+            }
+            //todo: check other IC_curves
+            for (int i = 1; i < IC_curves.size(); i++){
+                if (i != incumbent){
+                    if (IC_curves[i].x[idx[i]] < x1){ //intersect possible
+                        x2 = IC_curves[i].x[idx[i]];
+                        y2 = IC_curves[i].y[idx[i]];
+                        k2 = IC_curves[i].slopes[idx[i]];
+                        if (y1 - y2 >= k2 * (x1 - x2)){ //intersect confirmed
+                            pass = false;
+                            //todo: calculate the intersect and update temp_x, temp_y, candidate
+                        } else { //will not intersect
+                            //todo: pass
+                        }
+                    } else { //will not intersect
+                        //todo: pass
+                    }
+                }
+            }
+            if (!pass) {
+                if (temp_y != incumbent_y) {
+                    //todo: push back the closest intersect temp_x and temp_y
+                } else { //
+                    //todo: swap incumbent
+                    incumbent = candidate;
+                }
+            } else {
 
-        } else {
-            //todo: incumbent is the based one
+            }
+        } else { //incunmbent is the based one
+            //todo: check from index 1 to IC_curves.size()
             for (int i = 1; i < IC_curves.size(); i++){
                 
             }
