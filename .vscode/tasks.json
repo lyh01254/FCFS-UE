@@ -40,6 +40,7 @@
 				"-fexceptions",
 				"-DNDEBUG",
 				"-stdlib=libc++",
+				"-std=c++11",
 				"-I/Applications/CPLEX_Studio2211/cplex/include",
 				"-I/Applications/CPLEX_Studio2211/concert/include",
 				"-I${workspaceFolder}/include",

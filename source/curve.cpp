@@ -1,31 +1,23 @@
 #include "curve.h"
+using namespace std;
 
-int Curve::get_NbSegs() const{
-    return NbSegs;
+Curve::Curve(){
+    NbEnds = 0;
+    NbSegs = 0;
+    NbConsegs = 0;
 }
 
-int Curve::get_NbEnds() const{
-    return NbEnds;
-}
-
-int Curve::get_NbConsegs() const{
-    return NbConsegs;
-}
-
-const std::vector<double>& Curve::get_x() const{
-    return x;
-}
-
-const std::vector<double>& Curve::get_y() const{
-    return y;
-}
-
-const std::vector<double>& Curve::get_slopes() const{
-    return slopes;
-}
-
-const std::vector<int>& Curve::get_con_index() const{
-    return con_index;
+void Curve::display() const{
+    cout << "NbEnds = " << NbEnds << endl;
+    cout << "NbSegs = " << NbSegs << endl;
+    cout << "NbCons = " << NbConsegs << endl;
+    ::display(x, "x");
+    ::display(y, "y");
+    ::display(slopes, "k");
+    ::display(SegLen_x, "len_x");
+    ::display(SegLen_y, "len_y");
+    ::display(con_index, "con_idx");
+    cout << endl;
 }
 
 void find_v(std::vector<Curve>& v, const std::vector<double>& demand, const std::vector<std::vector<double> >& capacity, const std::vector<double>& cost, const double& gamma){
@@ -35,15 +27,23 @@ void find_v(std::vector<Curve>& v, const std::vector<double>& demand, const std:
     std::iota(sorted_index.begin(), sorted_index.end(), 0);
     std::sort(sorted_index.begin(), sorted_index.end(), [&](int i, int j){return cost[i] > cost[j];});
     std::vector<std::vector<double>> C(capacity);
+    display(sorted_index);
+    cout << "ready to find v." << endl;
     for (int k = 0; k < NbTypes; k++){
+        cout << "type " << k << " begin." << endl;
         double sum_C = 0;
         for (int i = 0; i < NbHotels; i++){
             sum_C += C[i][k];
         }
         double Q = demand[k];
+        if (sum_C <= Q){
+            cout << "This is an excess type" << endl;
+            continue;
+        } 
         auto it = sorted_index.begin();
         double x = Q;
         double y = 0;
+        cout << "start calculating initial point" << endl;
         while (Q > 0){
             if (Q >= C[*it][k]){
                 y += cost[*it] * C[*it][k];
@@ -55,9 +55,11 @@ void find_v(std::vector<Curve>& v, const std::vector<double>& demand, const std:
                 Q = 0;
             }
         }
+        cout << "initial point found." << endl;
         v[k].x.push_back(x);
         v[k].y.push_back(y);
         double previous_slope = -1;
+        cout << "initial point set." << endl;
         while (true){
             double slope_to_add = (cost[*it] + gamma);
             x += C[*it][k];
@@ -211,7 +213,6 @@ void inf_convolute(std::vector<Curve>& IC_curves, const Curve& V, const Curve& v
 };
 
 void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves){
-    std::vector<int> idx(IC_curves.size(), 0); //iterative index of ends for each IC_curve
     int idx_0 = 0;
     int idx_raised = 0; //iterative index ends for the raised_V
     int End_0 = IC_curves[0].NbSegs;
@@ -220,194 +221,146 @@ void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves){
     std::vector<double> based_x;
     std::vector<double> based_y;
     std::vector<double> based_slopes;
-    double incumbent_y = IC_curves[0].y[0];
-    double incumbent_x = IC_curves[0].x[0];
     based_x.push_back(0);
-    based_y.push_back(incumbent_y);
-    based_slopes.push_back(IC_curves[0].slopes[0]);
+    based_y.push_back(IC_curves[0].y[0]);
     bool raised_incumbent = false; //indicate whether the incumbent is raised_V
     double k1, k2, x1, y1, x2, y2;
-    double temp_x, temp_y, temp_slope, steep;
-    while (idx_0 < End_0){ 
+    double temp_x, steep, origin_x;
+    while (true){ 
         if (raised_incumbent) { //incumbent segment is raised_V
-            // while (idx_0 < End_0 && IC_curves[0].y[idx_0+1] <= incumbent_y){ //!maybe redundant
-            //     ++idx_0;
-            // }
-            //if (idx_0 == End_0) break;
-            x1 = raised_V.x[idx_raised+1]; //!can be placed to right after where idx_raised updates
+            x1 = raised_V.x[idx_raised+1];
             y1 = raised_V.y[idx_raised+1];
             k1 = raised_V.slopes[idx_raised];
-            if (IC_curves[0].x[idx_0] < raised_V.x[idx_raised+1]){ //shared domain
+            origin_x = x1;
+            while (true){ //shared domain
+                if (idx_0 == End_0) break;
+                if (IC_curves[0].x[idx_0] >= x1) break;
                 x2 = IC_curves[0].x[idx_0];
                 y2 = IC_curves[0].y[idx_0];
                 k2 = IC_curves[0].slopes[idx_0];
                 steep = (y1 - y2) - k2 * (x1 - x2);
                 if (steep > 0){ //steep enough, intersect if IC_curve long enough
                     temp_x = (k1*x1 - k2*x2 +y2 - y1) / (k1-k2);
-                    if (temp_x < IC_curves[0].x[idx_0+1]){ // IC_curve is long enough
-                        //* todo: compute intersect point, record an incumbent y, 
-                        raised_incumbent = false;
-                        if (temp_x != based_x.back()){ // push back
-                            //* todo: push back the confirmed section (check extension).
-                            incumbent_x = temp_x;
-                            incumbent_y = k1*incumbent_x + y1 - k1*x1;
-                            if (k1 != based_slopes.back()){
-                                based_x.push_back(incumbent_x);
-                                based_y.push_back(incumbent_y);
-                                based_slopes.push_back(k1);
-                            } else {
-                                based_x.back() = incumbent_x;
-                                based_y.back() = incumbent_y;
-                            } 
-                        }
-                    } else { // IC_curve is not long enough, being dominated
-                        ++idx_0;
-                    }
-                } else if (steep == 0){ //
-                    if (IC_curves[0].x[idx_0+1] >= x1){
-                        //* todo: push back incumbent
-                        if (k1 != based_slopes.back()){
-                            based_x.push_back(x1);
-                            based_y.push_back(y1);
-                            based_slopes.push_back(k1);
+                    if (temp_x > IC_curves[0].x[idx_0+1]) { //not long enough
+                        idx_0++;
+                    } else { //intersect
+                        y1 = k1 * temp_x + y1 - k1 * x1;
+                        x1 = temp_x;
+                        if (temp_x < IC_curves[0].x[idx_0+1]) {
+                            raised_incumbent = false;
+                            break;
                         } else {
-                            based_x.back() = x1;
-                            based_y.back() = y1;
+                            idx_0++;
                         }
-                        idx_raised++;
                     }
-                    if (IC_curves[0].x[idx_0+1] <= x1){ 
-                        idx_0++; //dominated.
-                    }
-                } else { //not steep enough
-                    if (IC_curves[0].x[idx_0+1] >= x1){ //long enough to push back incumbent
-                        incumbent_y = y1;
-                        if (k1 != based_slopes.back()){
-                            based_x.push_back(x1);
-                            based_y.push_back(incumbent_y);
-                            based_slopes.push_back(k1);
-                        } else {
-                            based_x.back() = x1;
-                            based_y.back() = incumbent_y;
+                } else if (steep == 0){ 
+                    if (IC_curves[0].x[idx_0+1] < x1) { //not long enough
+                        idx_0++;
+                        if (k1 == k2){ //overlap
+                            y1 = k1 * temp_x + y1 - k1 * x1;
+                            x1 = temp_x;
+                            break;
                         }
-                        ++idx_raised;
+                    } else {
+                        if (IC_curves[0].x[idx_0+1] == x1) {
+                            idx_0++;
+                        }
+                        break;
                     }
-                    if (IC_curves[0].y[idx_0+1] <= y1){ //not long enough, incumbent donimates
-                        ++idx_0;
-                    } 
+                } else if (IC_curves[0].y[idx_0+1] <= y1){ //not long enough, incumbent donimates
+                    idx_0++;
+                } else {
+                    break;
                 }
-            } else { //no shared domain (idx_raised can ++)
-                //* todo: push back the incumbent segment, update incumbent y (extension check)
-                incumbent_y = y1;
-                if (k1 != based_slopes.back()){
+            }
+            
+            if (x1 == origin_x){
+                if (based_slopes.empty() || k1 != based_slopes.back()){
                     based_x.push_back(x1);
-                    based_y.push_back(incumbent_y);
+                    based_y.push_back(y1);
                     based_slopes.push_back(k1);
                 } else {
                     based_x.back() = x1;
-                    based_y.back() = incumbent_y;
+                    based_y.back() = y1;
                 }
-                ++idx_raised;
+                idx_raised++;
+                if (idx_raised == End_raised) break;
+            } else if (!raised_incumbent) {
+                if (based_slopes.empty() || k1 != based_slopes.back()){
+                    based_x.push_back(x1);
+                    based_y.push_back(y1);
+                    based_slopes.push_back(k1);
+                } else {
+                    based_x.back() = x1;
+                    based_y.back() = y1;
+                }
             }
         }else{ //incumbent segment is IC_curves[0]
-            // while (raised_V.y[idx_raised+1] <= incumbent_y){
-            //     ++idx_raised;
-            // }
-            //if (idx_raised == End_raised) break; //* impossible
             x1 = IC_curves[0].x[idx_0+1];
             y1 = IC_curves[0].y[idx_0+1];
             k1 = IC_curves[0].slopes[idx_0];
-            if (raised_V.x[idx_raised] < IC_curves[0].x[idx_0+1]){ //shared domain
+            while (true) { //shared domain
+                if (raised_V.x[idx_raised] >= x1) break;
                 x2 = raised_V.x[idx_raised];
                 y2 = raised_V.y[idx_raised];
                 k2 = raised_V.slopes[idx_raised];
                 steep = y1 - y2 - k2 * (x1 - x2);
                 if (steep > 0){ //steep enough, intersect if raised_V is long enough
                     temp_x = (k1*x1 - k2*x2 +y2 - y1) / (k1-k2);
-                    if (temp_x < raised_V.x[idx_raised+1]){ //raised_V is long enough
-                        //* todo: compute intersect point, record an incumbent y, 
-                        raised_incumbent = true;
-                        if (temp_x != based_x.back()){ //swap
-                            incumbent_x = temp_x;
-                            incumbent_y = k1*incumbent_x + y1 - k1*x1;
-                            //* todo: else push back the confirmed section (check extension).
-                            if (k1 != based_slopes.back()){
-                                based_x.push_back(incumbent_x);
-                                based_y.push_back(incumbent_y);
-                                based_slopes.push_back(k1);
-                            } else {
-                                based_x.back() = incumbent_x;
-                                based_y.back() = incumbent_y;
-                            }                             
-                        }
-                    } else { //not long enough, will not intersect with this raised_V segment
-                        ++idx_raised;
-                    }  
-                } else if (steep == 0) {
-                    if (raised_V.x[idx_raised+1] >= x1){
-                        //* todo: push back incumbent
-                        if (k1 != based_slopes.back()){
-                            based_x.push_back(x1);
-                            based_y.push_back(y1);
-                            based_slopes.push_back(k1);
-                        } else {
-                            based_x.back() = x1;
-                            based_y.back() = y1;
-                        }
-                        idx_0++;
-                    }
-                    if (IC_curves[0].x[idx_0+1] <= x1){
+                    if (temp_x > raised_V.x[idx_raised+1]){ // not long enough
                         idx_raised++;
-                    }
-                } else { //not steep enough
-                    if (raised_V.x[idx_raised+1] >= x1){ //long enough to push back incumbent
-                        incumbent_y = y1;
-                        if (k1 != based_slopes.back()){
-                            based_x.push_back(x1);
-                            based_y.push_back(incumbent_y);
-                            based_slopes.push_back(k1);
+                    } else {
+                        y1 = k1 * temp_x + y1 - k1 * x1;
+                        x1 = temp_x;
+                        if (temp_x > raised_V.x[idx_raised+1]){
+                            raised_incumbent = true;
+                            break;
                         } else {
-                            based_x.back() = x1;
-                            based_y.back() = incumbent_y;
+                            idx_raised++;
                         }
-                        ++idx_0;
                     }
-                    if (raised_V.y[idx_raised+1] <= y1){ //not long enough, incumbent donimates
-                        ++idx_raised;
-                    } 
+                } else if (steep == 0) {
+                    if (raised_V.x[idx_raised+1] < x1) { //not long enough
+                        idx_raised++;
+                        if (k1 == k2){ //overlap
+                            y1 = k1 * temp_x + y1 - k1 * x1;
+                            x1 = temp_x;
+                            break;
+                        }
+                    } else {
+                        if (raised_V.x[idx_raised+1] == x1) {
+                            idx_raised++;
+                        }
+                        break;
+                    }
+                } else if (raised_V.y[idx_raised+1] <= y1) { //not steep enough
+                    idx_raised++;
+                } else {
+                    break;
                 }
-            } else { //no shared domain
-                //* todo: push back the incumbent segment, update incumbent y (extension check)
-                incumbent_y = y1;
-                if (k1 != based_slopes.back()){
+            }
+
+            if (x1 == origin_x){
+                if (based_slopes.empty() || k1 != based_slopes.back()){
                     based_x.push_back(x1);
-                    based_y.push_back(incumbent_y);
+                    based_y.push_back(y1);
                     based_slopes.push_back(k1);
                 } else {
                     based_x.back() = x1;
-                    based_y.back() = incumbent_y;
+                    based_y.back() = y1;
                 }
-                ++idx_0;
+                idx_0++;
+            } else if (raised_incumbent) {
+                if (based_slopes.empty() || k1 != based_slopes.back()){
+                    based_x.push_back(x1);
+                    based_y.push_back(y1);
+                    based_slopes.push_back(k1);
+                } else {
+                    based_x.back() = x1;
+                    based_y.back() = y1;
+                }
             }
         }
-    }
-    if (idx_raised < End_raised){ //there are still segments in raised_V
-        if (raised_V.slopes[idx_raised] != based_slopes.back()){ //extension check
-            based_x.push_back(raised_V.x[idx_raised+1]);
-            based_y.push_back(raised_V.y[idx_raised+1]);
-            based_slopes.push_back(raised_V.slopes[idx_raised]);
-        } else {
-            based_x.back() = raised_V.x[idx_raised+1];
-            based_y.back() = raised_V.y[idx_raised+1];
-        }
-        ++idx_raised;
-    }
-    while (idx_raised < End_raised){ // must have idx_0 == End_0
-        //* todo: add all remaining raised_V segments
-        based_x.push_back(raised_V.x[idx_raised+1]);
-        based_y.push_back(raised_V.y[idx_raised+1]);
-        based_slopes.push_back(raised_V.slopes[idx_raised]);
-        ++idx_raised;
     }
 
     //todo: then join the based_V with the remaining IC_curves
@@ -417,101 +370,127 @@ void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves){
     std::vector<int> idx(IC_curves.size(), 0);
     int idx_based = 0;
     int candidate; //record closest intersect and the candidate incumbent
-    double incumbent_slope, origin_x; //used to record k in case of identical intersect
-    bool pass; //true if all segments from other curves have no intersect and can not increment, in this case idx_incumbent should ++
-    while(true){
-        pass = true;
+    double incumbent_slope; //used to record k in case of identical intersect
+    while(true){       
         if (incumbent){//incumbent is the index of IC_curves
             x1 = IC_curves[incumbent].x[idx[incumbent]+1]; //incumbent_sec_x
             y1 = IC_curves[incumbent].y[idx[incumbent]+1]; //incumbent_sec_y
             k1 = IC_curves[incumbent].slopes[idx[incumbent]]; //incumbent_slope
-            incumbent_slope = k1; //incumbent_sec_k
+            if (x1 == IC_curves[incumbent].x.back()){ // this is the last 
+                incumbent_slope = 0;
+            } else {
+                incumbent_slope = k1;
+            }
             candidate = incumbent; // if after checking all other curves, candidate still = incumbent, 
             origin_x = x1;
             //todo: check based_V, take advantage of its first position
-            while (true){ //shared domain
-                based_x[idx_based] < x1;
+            while (true){ //break when have identified the longest x1 that ensure incumbent dominates the candidate
+                if (idx_based == based_slopes.size()) break; //* Break Condition: candidate ends 
+                if (based_x[idx_based] >= x1) break; //* Break Condition: candidate and incumbent(x1) have no shared domain
                 x2 = based_x[idx_based];
                 y2 = based_y[idx_based];
                 k2 = based_slopes[idx_based];
                 steep = y1 - y2 - k2 * (x1 - x2);
                 if (steep > 0){ //steep enough 
-                    pass = false;
                     temp_x = (k1*x1 - k2*x2 +y2 - y1) / (k1-k2); //temp_x must <= x1
-                    if (temp_x < based_x[idx_based+1]) { //long enough, exist unique interior intersect
-                        //* todo: calculate intersect, update candidate, incumbent slope
-                        x1 = temp_x; //can only ensure dominance within temp_x
-                        incumbent_slope = k2;
-                        candidate = 0;
-                        break;
-                        //because based is the first to check, the logic will be simpler
-                    } else { //steep enough but not long enough, pass this segment
-                        ++idx_based; //when = holds, no need to change candidate
-                        if (temp_x == based_x[idx_based+1]){
-                            break;
-                        }
-                    }
-                } else if (steep == 0){
-                    if (based_x[idx_based+1] <= x1){
+                    if (temp_x > based_x[idx_based+1]){ // not long enough, idx++ next iteration
                         idx_based++;
-                        if (k1 == k2){ //overlap
-                            x1 = based_x[idx_based+1];
-                            candidate = 0;
-                            pass = false;
+                    } else {
+                        y1 = k1 * temp_x + y1 - k1 * x1;
+                        x1 = temp_x;
+                        if (temp_x < based_x[idx_based+1]){
+                            incumbent_slope = k2;
+                            candidate = 0; //can so far confirm it is a steeper candidate 
+                            break; //* Break Condition: interior intersect
+                        } else {
+                            idx_based++; //go through next iteration 
                         }
                     }
-                } else if (based_y[idx_based+1] <= y1){ //not steep and long enough
-                    ++idx_based; //dominated
+                } else if (steep == 0){ //if touch incumbent, touch its right end
                     if (based_x[idx_based+1] < x1){
-                        pass = false; //the next based segment may intersect, should not pass incumbent
+                        idx_based++; //*Note: idx_based has changed
+                        if (k1 == k2){ //overlap
+                            y1 = k1 * based_x[idx_based] + y1 - k1 * x1;
+                            x1 = based_x[idx_based];
+                            break; //* Break Condition: overlap
+                        }
+                    } else { // 
+                        if (based_x[idx_based+1] == x1){
+                            idx_based++;
+                        }
+                        if (incumbent_slope == 0){ //touch the end of incumbent
+                            if (idx_based != based_slopes.size()){ //it can be a candidate
+                                incumbent_slope = k2;
+                                candidate = 0;
+                            }
+                        }
+                        break; //*Break Condition: candidate is not steep enough but long enough w.r.t x1
                     }
-                } //not steep enough but long enough: pass remains.
+                } else if (based_y[idx_based+1] <= y1){ //not steep and long enough; 
+                    ++idx_based; //dominated; let next iteration check break it if necessary
+                } else {
+                    break; //*Break Condition: candidate is not steep enough but long enough w.r.t y1
+                }
             }
             //todo: check other IC_curves
             for (int i = 1; i < IC_curves.size(); i++){
                 if (i != incumbent){ //other curves
-                    if (IC_curves[i].x[idx[i]] < x1){ //shared domain
+                    while (true){ //stop when have identified the longest x1 that ensures incumbent(x1) dominates candidate
+                        if (idx[i] == IC_curves[i].NbSegs) break; //*Break: candidate ends
+                        if (IC_curves[i].x[idx[i]] >= x1) break; //*Break: no shared domain
                         x2 = IC_curves[i].x[idx[i]];
                         y2 = IC_curves[i].y[idx[i]];
                         k2 = IC_curves[i].slopes[idx[i]];
-                        if (y1 - y2 >= k2 * (x1 - x2)){ //steep enough
-                            pass = false;
-                            if (k1 != k2) {//not overlap
-                                temp_x = (k1*x1 - k2*x2 +y2 - y1) / (k1-k2);
-                                if (temp_x < IC_curves[i].x[idx[i]+1]){ //long enough, unique intersect exists
-                                    if (temp_x < x1){ //closer than x1
-                                        x1 = temp_x;
-                                        if (temp_x != V.x.back() || k2 > incumbent_slope){ //closer interior intersect for incumbent or steeper left-ended intersect
-                                            incumbent_slope = k2;
-                                            candidate = i;
-                                        }
-                                    } else if (k2 > incumbent_slope) { //as close but steeper
+                        steep = y1 - y2 - k2 * (x1 - x2);
+                        if (steep > 0){ //steep enough
+                            temp_x = (k1*x1 - k2*x2 +y2 - y1) / (k1-k2);
+                            if (temp_x > IC_curves[i].x[idx[i]+1]){ //not long enough, idx++ next iteration
+                                idx[i]++;
+                            } else {
+                                y1 = k1 * temp_x + y1 - k1 * x1;
+                                x1 = temp_x;
+                                if (temp_x > IC_curves[i].x[idx[i]+1]){
+                                    incumbent_slope = k2;
+                                    candidate = i;
+                                } else {
+                                    idx[i]++;
+                                }
+                                break; //*Break: intersect
+                            }
+                        } else if (steep == 0){
+                            if (IC_curves[i].x[idx[i]+1] < x1){
+                                idx[i]++; //*Note: idx has changed
+                                if (k1 == k2){ //overlap
+                                    y1 = k1 * IC_curves[i].x[idx[i]] + y1 - k1 * x1;
+                                    x1 = IC_curves[i].x[idx[i]];
+                                    break; //* Break Condition: overlap
+                                }
+                            } else { // 
+                                if (IC_curves[i].x[idx[i]+1] == x1){
+                                    idx[i]++;
+                                } 
+                                if (incumbent_slope == 0) { //touch the end of incumbent
+                                    if (idx_based != based_slopes.size()){ //it can be a candidate
                                         incumbent_slope = k2;
                                         candidate = i;
-                                    } // else (same distanced intersect && flatter slope)
-                                } else { //steep enough but not long enough, pass this segment
-                                    ++idx[i];
+                                    }
+                                } else if (k2 > incumbent_slope){ //pass through a same intersect
+                                    incumbent_slope = k2;
+                                    candidate = i;
                                 }
-                            } else { //overlap
-                                //* todo: intersect is the min of (x1, IC_curve[i].x), no need to update incumbent slope
-                                candidate = i;
-                                if (x1 >= IC_curves[i].x[idx[i]+1]){ //IC_curve_x is shorter, update x1
-                                    x1 = IC_curves[i].x[idx[i]+1];
-                                    ++idx[i]; //this segment is dominated
-                                }
-                            }
-                        } else if (IC_curves[i].x[idx[i]+1] <= x1) { //not long and steep, dominated
-                            idx[i]++;
-                            pass = false;
+                                break; //*Break: candidate is not steep enough but long enough w.r.t x1; early domain break
+                            }                           
+                        } else if (IC_curves[i].y[idx[i]+1] <= y1) { //not long and steep, dominated
+                            idx[i]++; //let next iteration break loop
+                        } else {
+                            break; //*Break: candidate is not steep enough but long enough w.r.t y1;
                         }
-                    } else { //no shared domained
-                        //* todo: do nothing
-                    }
+                    } 
                 }
             }
 
-            if (x1 == origin_x){ //the original incumbent is dominating
-                if (k1 != V.slopes.back()){
+            if (x1 == origin_x){ //incumbent can be pushed back
+                if (V.slopes.empty() || k1 != V.slopes.back()){
                     V.x.push_back(x1);
                     V.y.push_back(y1);
                     V.slopes.push_back(k1);
@@ -519,60 +498,120 @@ void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves){
                     V.x.back() = x1;
                     V.y.back() = y1;
                 }
-            } else { //the original segment is cut, only dominate within x1, there must be a candidate
-                if (x1 != V.x.back()){ 
-                    //* todo: push back the incumbent x and y and slope (check extension)
-                    y1 = k1*x1 + y1 - k1*x1;
-                    if (k1 != V.slopes.back()){
+                idx[incumbent]++; //if this is the end, candidate will have shifted (steep == 0 case)
+                if (x1 == based_x.back()) break;
+                if (idx[incumbent] == IC_curves[incumbent].NbEnds) {
+                    incumbent = candidate;
+                }
+            } else if (candidate != incumbent) {
+                if (x1 != V.x.back()) {
+                    if (V.slopes.empty() || k1 != V.slopes.back()){
                         V.x.push_back(x1);
                         V.y.push_back(y1);
                         V.slopes.push_back(k1);
                     } else {
                         V.x.back() = x1;
                         V.y.back() = y1;
-                    }
+                    }                   
                 }
                 incumbent = candidate;
-            }
-            
-            if (pass){ //all segments either (no shared domain) or (have shared domain but all are not steep but long enough)
-                //* todo: push back the incumbent and increment idx[incumbent] (check extension)
-                if (k1 != V.slopes.back()){
-                    V.x.push_back(x1);
-                    V.y.push_back(y1);
-                    V.slopes.push_back(k1);
-                } else {
-                    V.x.back() = x1;
-                    V.y.back() = y1;
-                }
-                idx[incumbent]++;
-            } else if (candidate != incumbent) { //shared domain, and has intersect; i.e. exist one segment steep and long enough
-                //* todo: update the incumbent
-                incumbent = candidate;
-                if (x1 != V.x.back()){ 
-                    //* todo: push back the incumbent x and y and slope (check extension)
-                    y1 = k1*x1 + y1 - k1*x1;
-                    if (k1 != V.slopes.back()){
-                        V.x.push_back(x1);
-                        V.y.push_back(y1);
-                        V.slopes.push_back(k1);
-                    } else {
-                        V.x.back() = x1;
-                        V.y.back() = y1;
-                    }
-                } 
-            } else { //shared domain but no intersect, i.e., all not long enough
-                //* todo: nothing, idx_incumbent should not ++
-            }
-
-
+            } //else: do nothing
         } else { //incunmbent is the based one
+            x1 = based_x[idx_based+1]; //incumbent_sec_x
+            y1 = based_y[idx_based+1]; //incumbent_sec_y
+            k1 = based_slopes[idx_based]; //incumbent_slope
+            incumbent_slope = k1; //incumbent_sec_k
+            candidate = incumbent; // 
+            origin_x = x1;
             //todo: check from index 1 to IC_curves.size()
             for (int i = 1; i < IC_curves.size(); i++){
-                
+                while (true){ //stop when have identified the longest x1 that ensures incumbent(x1) dominates candidate
+                    if (idx[i] == IC_curves[i].NbSegs) break; //*Break: candidate ends
+                    if (IC_curves[i].x[idx[i]] >= x1) break; //*Break: no shared domain
+                    x2 = IC_curves[i].x[idx[i]];
+                    y2 = IC_curves[i].y[idx[i]];
+                    k2 = IC_curves[i].slopes[idx[i]];
+                    steep = y1 - y2 - k2 * (x1 - x2);
+                    if (steep > 0){ //steep enough
+                        temp_x = (k1*x1 - k2*x2 +y2 - y1) / (k1-k2);
+                        if (temp_x > IC_curves[i].x[idx[i]+1]){ //not long enough, idx++ next iteration
+                            idx[i]++;
+                        } else {
+                            y1 = k1 * temp_x + y1 - k1 * x1;
+                            x1 = temp_x;
+                            if (temp_x > IC_curves[i].x[idx[i]+1]){
+                                incumbent_slope = k2;
+                                candidate = i;
+                            } else {
+                                idx[i]++;
+                            }
+                            break; //*Break: intersect
+                        }
+                    } else if (steep == 0){
+                        if (IC_curves[i].x[idx[i]+1] < x1){
+                            idx[i]++; //*Note: idx has changed
+                            if (k1 == k2){ //overlap
+                                y1 = k1 * IC_curves[i].x[idx[i]] + y1 - k1 * x1;
+                                x1 = IC_curves[i].x[idx[i]];
+                                break; //* Break Condition: overlap
+                            }
+                        } else { // 
+                            if (IC_curves[i].x[idx[i]+1] == x1){
+                                idx[i]++;
+                            } else if (x1 != origin_x && k2 > incumbent_slope){ //pass through a same intersect
+                                incumbent_slope = k2;
+                                candidate = i;
+                            }
+                            break; //*Break: candidate is not steep enough but long enough w.r.t x1; early domain break
+                        }                           
+                    } else if (IC_curves[i].y[idx[i]+1] <= y1) { //not long and steep, dominated
+                        idx[i]++; //let next iteration break loop
+                    } else {
+                        break; //*Break: candidate is not steep enough but long enough w.r.t y1;
+                    }
+                } 
             }
+
+            if (x1 == origin_x){ //incumbent can be pushed back, candidate must == incumbent
+                if (V.slopes.empty() || k1 != V.slopes.back()){
+                    V.x.push_back(x1);
+                    V.y.push_back(y1);
+                    V.slopes.push_back(k1);
+                } else {
+                    V.x.back() = x1;
+                    V.y.back() = y1;
+                }
+                idx_based++;
+                if (x1 == based_x.back()) break;
+            } else if (candidate != incumbent) {
+                if (x1 != V.x.back()) {
+                    if (V.slopes.empty() || k1 != V.slopes.back()){
+                        V.x.push_back(x1);
+                        V.y.push_back(y1);
+                        V.slopes.push_back(k1);
+                    } else {
+                        V.x.back() = x1;
+                        V.y.back() = y1;
+                    }                   
+                }
+                incumbent = candidate;
+            } //else: do nothing
         }
     }
+    V.NbEnds = V.x.size();
+    V.NbSegs = V.slopes.size();
+    V.con_index.push_back(0);
+    double temp_k = __DBL_MAX__;
+    for (int i = 0; i < V.NbSegs; i++){
+        V.SegLen_x[i] = V.x[i+1] - V.x[i];
+        V.SegLen_y[i] = V.y[i+1] - V.y[i];
+        if (V.slopes[i] > temp_k){
+            V.con_index.push_back(i);
+        }
+        temp_k = V.slopes[i];
+    }
+    V.con_index.push_back(V.NbSegs);
+    V.NbConsegs = V.con_index.size()-1;
 };
 
 void v2V(Curve& V, const Curve& v){
@@ -583,7 +622,8 @@ void v2V(Curve& V, const Curve& v){
     V.x = v.x;
     V.y = v.y;
     V.slopes = v.slopes;
+    double D = v.x[0];
     for (int i = 0; i < V.NbEnds; i++){
-        V.x[i] -= v.x[0];
+        V.x[i] -= D;
     }
 }

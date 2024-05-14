@@ -40,7 +40,7 @@ int main(int argc, char* argv[]){
             Capacity_by_k[k] += capacity[i][k];
         }
     }
-    gamma = 1;
+
     display(demand, "Demand");
     display(cost, "Cost");
     cout << "gamma = " << gamma << endl;
@@ -190,7 +190,7 @@ int main(int argc, char* argv[]){
     IloCplex so_cplex(so_model);
     obj.setSense(IloObjective::Maximize);
     ue_cplex.setOut(env.getNullStream());
-    //ue_cplex.exportModel("ue_model.lp");
+    ue_cplex.exportModel("ue_model1.lp");
     //obj.setSense(IloObjective::Minimize);
     //so_cplex.exportModel("so_model.lp");
     if (ue_cplex.solve()){
@@ -198,6 +198,9 @@ int main(int argc, char* argv[]){
             cout << "Best UE = " << ue_cplex.getObjValue() << endl;
         } else {
             cout << "Worst UE = " << ue_cplex.getObjValue() << endl;
+            for (int k = 0; k < NbTypes; k++){
+                cout << "u[" << k << "] = " << ue_cplex.getValue(u[k]) << endl;
+            }
         }
     } else{
         cout << "UE is infeasible." << endl;
@@ -230,6 +233,7 @@ int main(int argc, char* argv[]){
     ue_model.add(expr_misplacement >= ue_cplex.getObjValue());
     ue_model.remove(obj_misplacement);
     ue_model.add(obj);
+    ue_cplex.exportModel("ue_model2.lp");
     if (ue_cplex.solve()){
         if (obj.getSense() == 1){
             cout << "Best UE = " << ue_cplex.getObjValue() << endl;

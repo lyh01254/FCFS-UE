@@ -1,6 +1,7 @@
 #ifndef CURVE_H
 #define CURVE_H
 #include <vector>
+#include "common.h"
 #include <algorithm>
 #include <numeric>
 
@@ -22,13 +23,8 @@ public:
     friend void inf_convolute(std::vector<Curve>& IC_curves, const Curve& V, const Curve& v);
     friend void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves);
     friend void v2V(Curve& V, const Curve& v);
-    int get_NbSegs() const;
-    int get_NbEnds() const;
-    int get_NbConsegs() const;
-    const std::vector<double>& get_x() const;
-    const std::vector<double>& get_y() const;
-    const std::vector<double>& get_slopes() const;
-    const std::vector<int>& get_con_index() const;
+    void display() const;
+    Curve();
 };
 
 

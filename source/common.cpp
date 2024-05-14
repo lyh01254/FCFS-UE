@@ -2,43 +2,43 @@
 using namespace std;
 
 template <typename T>
-void display(vector<T> &array){
+void display(const vector<T> &array){
     for (int i = 0; i < array.size(); i++){
         cout << array[i] << " ";
     }
     cout << endl;
 }
-template void display<int>(vector<int> &array);
-template void display<double>(vector<double> &array);
-template void display<bool>(vector<bool> &array);
+template void display<int>(const vector<int> &array);
+template void display<double>(const vector<double> &array);
+template void display<bool>(const vector<bool> &array);
 
 template <typename T>
-void display(vector<T> &array, string name){
+void display(const vector<T> &array, string name){
     cout << name << ": ";
     display(array);
 }
-template void display<int>(vector<int> &array, string name);
-template void display<double>(vector<double> &array, string name);
-template void display<bool>(vector<bool> &array, string name);
+template void display<int>(const vector<int> &array, string name);
+template void display<double>(const vector<double> &array, string name);
+template void display<bool>(const vector<bool> &array, string name);
 
 template <typename T>
-void display(vector<vector<T>> &matrix){
+void display(const vector<vector<T>> &matrix){
     for (int i = 0; i < matrix.size(); i++){
         display(matrix[i]);
     }
 }
-template void display<int>(vector<vector<int>> &matrix);
-template void display<double>(vector<vector<double>> &matrix);
-template void display<bool>(vector<vector<bool>> &matrix);
+template void display<int>(const vector<vector<int>> &matrix);
+template void display<double>(const vector<vector<double>> &matrix);
+template void display<bool>(const vector<vector<bool>> &matrix);
 
 template <typename T>
-void display(vector<vector<T>> &matrix, string name){
+void display(const vector<vector<T>> &matrix, string name){
     cout << name << ": " << endl;
     display(matrix);
 }
-template void display<int>(vector<vector<int>> &matrix, string name);
-template void display<double>(vector<vector<double>> &matrix, string name);
-template void display<bool>(vector<vector<bool>> &matrix, string name);
+template void display<int>(const vector<vector<int>> &matrix, string name);
+template void display<double>(const vector<vector<double>> &matrix, string name);
+template void display<bool>(const vector<vector<bool>> &matrix, string name);
 
 void display(int *array, int size){
     for (int i = 0; i < size; i++){
