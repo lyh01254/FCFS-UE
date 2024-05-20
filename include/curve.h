@@ -23,8 +23,14 @@ public:
     friend void inf_convolute(std::vector<Curve>& IC_curves, const Curve& V, const Curve& v);
     friend void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves);
     friend void v2V(Curve& V, const Curve& v);
+    friend void truncate(Curve& truncated_V, const Curve& V, const Curve& v, const double& gamma);
     void display() const;
+    void shift(const double& V);
     Curve();
+    const int& get_NbEnds();
+    const std::vector<double>& get_y(); 
+    const int& get_NbCons();
+    const double value_at(const double& point) const;
 };
 
 

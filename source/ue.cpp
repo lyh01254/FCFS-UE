@@ -14,7 +14,7 @@ vector<double> cost;
 vector<double> Capacity_by_k;
 
 
-string root = "data/instance/";
+string root = "data/totally_random/";
 
 int main(int argc, char* argv[]){
     string file_name;
