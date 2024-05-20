@@ -26,6 +26,11 @@ void surplus_solve();
 void enumerate(vector<int>& sequence, int start, unordered_map<string, Curve>& V_S, const vector<Curve>& v);
 void solve(const vector<int>& sequence, unordered_map<string, Curve>& V_S, const vector<Curve>& v);
 
+double excess_tsp();
+void surplus_solve();
+void enumerate(vector<int>& sequence, int start, unordered_map<string, Curve>& V_S, const vector<Curve>& v);
+void solve(const vector<int>& sequence, unordered_map<string, Curve>& V_S, const vector<Curve>& v);
+
 int main(int argc, char* argv[]){
     string file_name;
     if (argc > 1){
