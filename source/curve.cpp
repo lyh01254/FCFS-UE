@@ -1,6 +1,18 @@
 #include "curve.h"
 using namespace std;
 
+const int& Curve::get_NbEnds(){
+    return NbEnds;
+}
+
+const std::vector<double>& Curve::get_y(){
+    return y;
+} 
+
+const int& Curve::get_NbCons(){
+    return NbConsegs;
+}
+
 Curve::Curve(){
     NbEnds = 0;
     NbSegs = 0;
@@ -38,6 +50,13 @@ void find_v(std::vector<Curve>& v, const std::vector<double>& demand, const std:
         double Q = demand[k];
         if (sum_C <= Q){
             cout << "This is an excess type" << endl;
+            v[k].x.push_back(Q-sum_C); //x[0] = truncate point
+            v[k].x.push_back(sum_C); //x[1] = sum_C
+            double initial_y = 0;
+            for (int i = 0; i < NbHotels; i++){
+                initial_y += cost[i] * capacity[i][k];
+            }
+            v[k].y.push_back(initial_y); //y[0] = initial y
             continue;
         } 
         auto it = sorted_index.begin();
@@ -101,7 +120,10 @@ void raise(Curve& raised_V, const Curve& V, const Curve& v, const double& gamma)
 
     double Dt = v.x[0]; //the threshold Dt
     int idx = 0;
+   //cout << "start to raise" << endl;
+    //V.display();
     while (idx < V.NbEnds - 1){ //
+    //cout << "idx = " << idx << endl;
          if (V.x[idx] < Dt && V.x[idx+1] > Dt){
             //*First handle the raised segment
             double new_slope = V.slopes[idx] + gamma;
@@ -162,36 +184,56 @@ void raise(Curve& raised_V, const Curve& V, const Curve& v, const double& gamma)
     }
     raised_V.NbEnds = raised_V.x.size();
     raised_V.NbSegs = raised_V.NbEnds - 1;
+    raised_V.con_index.push_back(idx);
     raised_V.NbConsegs = raised_V.con_index.size() - 1;
 };
 
 void inf_convolute(std::vector<Curve>& IC_curves, const Curve& V, const Curve& v){
-    int End_v = v.x.back(); //last end index of v
+    int End_v = v.NbSegs; //last end index of v
     for (int i = 0; i < V.NbConsegs; i++){ //for each concave segment
+        //cout << "inf convolution i = " << i << endl;
         int idx_v = 0; //iterative index of ends for v
         int idx_V = V.con_index[i]; //iterative index of ends for V's concave segment i
         int End_V = V.con_index[i+1]; //final end index of V's concave segment i
         double x = V.x[idx_V]; //starting x of IC_curve
-        double y = v.y[0]+V.y[i]; //starting y of IC_curve
+        double y = v.y[0]+V.y[idx_V]; //starting y of IC_curve
         IC_curves[i].x.push_back(x); //push back the starting x
         IC_curves[i].y.push_back(y); //push back the starting y
         //*slope re-arrange
         double len_x, len_y, slope_to_add;
-        while (idx_v < End_v || idx_V < End_V){ //there's still slope to insert
-            if (idx_v == End_v || V.slopes[idx_V] >= v.slopes[idx_v]){ //insert next slope from V
-                len_x = V.SegLen_x[idx_V];
-                len_y = V.SegLen_y[idx_V];
-                slope_to_add = V.slopes[idx_V];
-                ++idx_V;
-            } else { //insert next slope from v
+        while (true){ //there's still slope to insert
+            if (idx_v == End_v) { 
+                if (idx_V == End_V) {
+                    break;
+                } else { //insert V
+                    len_x = V.SegLen_x[idx_V];
+                    len_y = V.SegLen_y[idx_V];
+                    slope_to_add = V.slopes[idx_V];
+                    ++idx_V;
+                    //cout << "insert V; idx_V upadted to " << idx_V << endl;
+                }
+            } else if (idx_V == End_V) { // insert v
                 len_x = v.SegLen_x[idx_v];
                 len_y = v.SegLen_y[idx_v];
                 slope_to_add = v.slopes[idx_v];
                 ++idx_v;
+                //cout << "insert v; idx_v upadted to " << idx_v << endl;
+            } else if (V.slopes[idx_V] >= v.slopes[idx_v]){ //insert V
+                len_x = V.SegLen_x[idx_V];
+                len_y = V.SegLen_y[idx_V];
+                slope_to_add = V.slopes[idx_V];
+                ++idx_V;
+                //cout << "insert V; idx_V upadted to " << idx_V << endl;
+            } else { //insert v
+                len_x = v.SegLen_x[idx_v];
+                len_y = v.SegLen_y[idx_v];
+                slope_to_add = v.slopes[idx_v];
+                ++idx_v;
+                //cout << "insert v; idx_v upadted to " << idx_v << endl;
             }
             x += len_x; //next x value
             y += len_y; //next y value
-            if (IC_curves[i].slopes.back() != slope_to_add) { //add a new segment
+            if (IC_curves[i].slopes.empty() || IC_curves[i].slopes.back() != slope_to_add) { //add a new segment
                 IC_curves[i].x.push_back(x);
                 IC_curves[i].y.push_back(y);
                 IC_curves[i].SegLen_x.push_back(len_x);
@@ -227,7 +269,10 @@ void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves){
     double k1, k2, x1, y1, x2, y2;
     double temp_x, steep, origin_x;
     while (true){ 
+        //cout << "idx_0 = " << idx_0 << endl;
+        //cout << "idx_raised = " << idx_raised << endl;
         if (raised_incumbent) { //incumbent segment is raised_V
+            //cout << "incumbent = raised" << endl;
             x1 = raised_V.x[idx_raised+1];
             y1 = raised_V.y[idx_raised+1];
             k1 = raised_V.slopes[idx_raised];
@@ -238,7 +283,8 @@ void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves){
                 x2 = IC_curves[0].x[idx_0];
                 y2 = IC_curves[0].y[idx_0];
                 k2 = IC_curves[0].slopes[idx_0];
-                steep = (y1 - y2) - k2 * (x1 - x2);
+                steep = k2 * (x1 - x2) - y1 + y2;
+                //cout << "steep = " << steep << endl;
                 if (steep > 0){ //steep enough, intersect if IC_curve long enough
                     temp_x = (k1*x1 - k2*x2 +y2 - y1) / (k1-k2);
                     if (temp_x > IC_curves[0].x[idx_0+1]) { //not long enough
@@ -296,24 +342,32 @@ void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves){
                 }
             }
         }else{ //incumbent segment is IC_curves[0]
+            //cout << "incumbent = IC" << endl;
             x1 = IC_curves[0].x[idx_0+1];
             y1 = IC_curves[0].y[idx_0+1];
             k1 = IC_curves[0].slopes[idx_0];
+            origin_x = x1;
             while (true) { //shared domain
-                if (raised_V.x[idx_raised] >= x1) break;
+                if (raised_V.x[idx_raised] >= x1) {
+                    //cout << "shared domain" << endl;
+                    break;
+                }
                 x2 = raised_V.x[idx_raised];
                 y2 = raised_V.y[idx_raised];
                 k2 = raised_V.slopes[idx_raised];
-                steep = y1 - y2 - k2 * (x1 - x2);
+                steep = k2 * (x1 - x2) - y1 + y2;
+                //cout << "steep = " << steep << endl;
                 if (steep > 0){ //steep enough, intersect if raised_V is long enough
                     temp_x = (k1*x1 - k2*x2 +y2 - y1) / (k1-k2);
+                    //cout << "temp_x = " << temp_x << endl;
                     if (temp_x > raised_V.x[idx_raised+1]){ // not long enough
                         idx_raised++;
                     } else {
                         y1 = k1 * temp_x + y1 - k1 * x1;
                         x1 = temp_x;
-                        if (temp_x > raised_V.x[idx_raised+1]){
+                        if (temp_x < raised_V.x[idx_raised+1]){
                             raised_incumbent = true;
+                            //cout << "intersect" << endl;
                             break;
                         } else {
                             idx_raised++;
@@ -325,17 +379,20 @@ void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves){
                         if (k1 == k2){ //overlap
                             y1 = k1 * temp_x + y1 - k1 * x1;
                             x1 = temp_x;
+                            //cout << "overlap" << endl;
                             break;
                         }
                     } else {
                         if (raised_V.x[idx_raised+1] == x1) {
                             idx_raised++;
                         }
+                        //cout << "touch right end" << endl;
                         break;
                     }
                 } else if (raised_V.y[idx_raised+1] <= y1) { //not steep enough
                     idx_raised++;
                 } else {
+                    //cout << "flat but long." << endl;
                     break;
                 }
             }
@@ -363,15 +420,43 @@ void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves){
         }
     }
 
+    //display(based_x, "based_x");
+    //display(based_y, "based_y");
+    //display(based_slopes, "based_slopes");
+
+    if (IC_curves.size() == 1) {
+        V.x = based_x;
+        V.y = based_y;
+        V.slopes = based_slopes;
+        V.NbEnds = V.x.size();
+        V.NbSegs = V.slopes.size();
+        V.con_index.push_back(0);
+        double temp_k = __DBL_MAX__;
+        for (int i = 0; i < V.NbSegs; i++){
+            V.SegLen_x.push_back(V.x[i+1] - V.x[i]);
+            V.SegLen_y.push_back(V.y[i+1] - V.y[i]);
+            if (V.slopes[i] > temp_k){
+                V.con_index.push_back(i);
+            }
+            temp_k = V.slopes[i];
+        }
+        V.con_index.push_back(V.NbSegs);
+        V.NbConsegs = V.con_index.size()-1;
+        return;
+    }
+
     //todo: then join the based_V with the remaining IC_curves
-    V.x[0] = based_x[0];
-    V.y[0] = based_y[0];
+    V.x.push_back(based_x[0]);
+    V.y.push_back(based_y[0]);
     int incumbent = 0; //0 = based; i for IC_curves[i]
     std::vector<int> idx(IC_curves.size(), 0);
     int idx_based = 0;
     int candidate; //record closest intersect and the candidate incumbent
     double incumbent_slope; //used to record k in case of identical intersect
     while(true){       
+        // cout << "incumbent = " << incumbent << endl;
+        // cout << "idx_based = " << idx_based << endl;
+        // cout << "idx[1] = " << idx[1] << endl;
         if (incumbent){//incumbent is the index of IC_curves
             x1 = IC_curves[incumbent].x[idx[incumbent]+1]; //incumbent_sec_x
             y1 = IC_curves[incumbent].y[idx[incumbent]+1]; //incumbent_sec_y
@@ -390,7 +475,7 @@ void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves){
                 x2 = based_x[idx_based];
                 y2 = based_y[idx_based];
                 k2 = based_slopes[idx_based];
-                steep = y1 - y2 - k2 * (x1 - x2);
+                steep = k2 * (x1 - x2) - y1 + y2;
                 if (steep > 0){ //steep enough 
                     temp_x = (k1*x1 - k2*x2 +y2 - y1) / (k1-k2); //temp_x must <= x1
                     if (temp_x > based_x[idx_based+1]){ // not long enough, idx++ next iteration
@@ -441,7 +526,7 @@ void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves){
                         x2 = IC_curves[i].x[idx[i]];
                         y2 = IC_curves[i].y[idx[i]];
                         k2 = IC_curves[i].slopes[idx[i]];
-                        steep = y1 - y2 - k2 * (x1 - x2);
+                        steep = k2 * (x1 - x2) - y1 + y2;
                         if (steep > 0){ //steep enough
                             temp_x = (k1*x1 - k2*x2 +y2 - y1) / (k1-k2);
                             if (temp_x > IC_curves[i].x[idx[i]+1]){ //not long enough, idx++ next iteration
@@ -531,7 +616,8 @@ void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves){
                     x2 = IC_curves[i].x[idx[i]];
                     y2 = IC_curves[i].y[idx[i]];
                     k2 = IC_curves[i].slopes[idx[i]];
-                    steep = y1 - y2 - k2 * (x1 - x2);
+                    steep = k2 * (x1 - x2) - y1 + y2;
+                    //cout << "steep = " << steep << endl;
                     if (steep > 0){ //steep enough
                         temp_x = (k1*x1 - k2*x2 +y2 - y1) / (k1-k2);
                         if (temp_x > IC_curves[i].x[idx[i]+1]){ //not long enough, idx++ next iteration
@@ -603,8 +689,8 @@ void join(Curve& V, const Curve& raised_V, const std::vector<Curve>& IC_curves){
     V.con_index.push_back(0);
     double temp_k = __DBL_MAX__;
     for (int i = 0; i < V.NbSegs; i++){
-        V.SegLen_x[i] = V.x[i+1] - V.x[i];
-        V.SegLen_y[i] = V.y[i+1] - V.y[i];
+        V.SegLen_x.push_back(V.x[i+1] - V.x[i]);
+        V.SegLen_y.push_back(V.y[i+1] - V.y[i]);
         if (V.slopes[i] > temp_k){
             V.con_index.push_back(i);
         }
@@ -622,8 +708,139 @@ void v2V(Curve& V, const Curve& v){
     V.x = v.x;
     V.y = v.y;
     V.slopes = v.slopes;
+    V.SegLen_x = v.SegLen_x;
+    V.SegLen_y = v.SegLen_y;
     double D = v.x[0];
     for (int i = 0; i < V.NbEnds; i++){
         V.x[i] -= D;
+    }
+}
+
+const double Curve::value_at(const double& point) const{
+    //* todo: find value at truncated point
+    if (point < 0 || (point - x.back()) > 0.00001){
+        cout << "out of range!" << endl;
+        cout << "direct misplace = " << std::scientific << std::setprecision(16) << point << endl;
+        cout << "x back = " << std::scientific << std::setprecision(16) << x.back() << endl;
+        cout << (point - x.back()) << endl;
+        this->display();
+        throw "out of range";
+    } else {
+        int i = 0;
+        while (true){
+            if (x[i] <= point && x[i+1] >= point) {
+                return y[i] + slopes[i] * (point - x[i]);
+            } else {
+                i++;
+            }
+        }
+    }
+}
+
+void truncate(Curve& truncated_V, const Curve& V, const Curve& v, const double& gamma){
+    double trun_point = v.x[0];
+    double sum_C = v.x[1];
+    double initial_v = v.y[0];
+    //* todo: find value at truncated point
+    double initial_V = 0;
+    int i = 0;
+    while (true) {
+        if (V.x[i] <= trun_point && V.x[i+1] >= trun_point){
+            if (V.x[i] == trun_point){
+                initial_V = V.y[i];
+            } else if (V.x[i+1] == trun_point){
+                initial_V = V.y[i+1];
+                if (++i == V.NbEnds){ //reduce to a single point
+                    truncated_V.x.push_back(0);
+                    truncated_V.y.push_back(initial_V + initial_v);
+                    truncated_V.NbEnds = 1;
+                    return;
+                }
+            } else {
+                initial_V = V.x[i] + V.slopes[i] * (trun_point - V.x[i]);
+            }
+            truncated_V.x.push_back(0);
+            truncated_V.y.push_back(initial_V + initial_v);
+            truncated_V.slopes.push_back(V.slopes[i] + gamma);
+            i++;
+            break;
+        }
+        i++;
+    } // exit with i points to the next index of V[x] right after the trun_point
+
+    if (sum_C >= V.x.back() - trun_point){ //all raised
+        //* todo: all remaining x's minus truncated point
+        //* todo: all remaining slopes + gamma
+        //* todo: all remaining y + initial_v + gamma * x
+        while (i < V.NbSegs){
+            truncated_V.x.push_back(V.x[i] - trun_point);
+            truncated_V.slopes.push_back(V.slopes[i] + gamma);
+            truncated_V.y.push_back(V.y[i] + initial_v + gamma * truncated_V.x.back());
+            i++;
+        }
+        truncated_V.x.push_back(V.x[i] - trun_point);
+        truncated_V.y.push_back(V.y[i] + initial_v + gamma * truncated_V.x.back());
+    } else {
+        //* todo: before break point all x minus trun_point
+        //* todo: add a break point v.x[1] if not exist
+        //* todo: after break point all x minus trun_point
+        //* todo: before break point, all slope + gamma, all y + initial_value + gamma * x
+        //* todo: after break point, all slope remain, all y + initial_value + gamma * break_point
+        double break_point = sum_C + trun_point;
+        if (V.x[i] > break_point) {
+            
+        }
+        cout << "i = " << i << endl;
+        while (V.x[i] < break_point) { // before break point
+            truncated_V.x.push_back(V.x[i] - trun_point);
+            truncated_V.y.push_back(V.y[i] + initial_v + gamma * truncated_V.x.back());
+            truncated_V.slopes.push_back(V.slopes[i] + gamma);
+            i++;
+        }
+        if (V.x[i] == break_point){
+            truncated_V.x.push_back(sum_C);
+            truncated_V.y.push_back(V.y[i] + initial_v + gamma * sum_C);
+            truncated_V.slopes.push_back(V.slopes[i]);
+            i++;
+        } else {
+            truncated_V.y.push_back(truncated_V.y.back() + truncated_V.slopes.back() * (sum_C - truncated_V.x.back()));
+            truncated_V.x.push_back(sum_C);
+        }
+        if (i < V.NbSegs){
+            truncated_V.slopes.push_back(V.slopes[i]);
+            i++;
+            while (i < V.NbSegs){
+                truncated_V.x.push_back(V.x[i] - trun_point);
+                truncated_V.y.push_back(V.y[i] + initial_v + gamma * sum_C);
+                truncated_V.slopes.push_back(V.slopes[i] + gamma);
+                i++;
+            }
+            cout << "i = " << i << endl;
+            cout << "V.x[i] = " << V.x[i] << endl;
+            truncated_V.x.push_back(V.x[i] - trun_point);
+            truncated_V.y.push_back(V.y[i] + initial_v + gamma * sum_C);
+        }
+    }
+    truncated_V.NbEnds = truncated_V.x.size();
+    truncated_V.NbSegs = truncated_V.slopes.size();
+    truncated_V.con_index.push_back(0);
+    double temp_k = __DBL_MAX__;
+    for (int i = 0; i < truncated_V.NbSegs; i++){
+        truncated_V.SegLen_x.push_back(truncated_V.x[i+1] - truncated_V.x[i]);
+        truncated_V.SegLen_y.push_back(truncated_V.y[i+1] - truncated_V.y[i]);
+        if (truncated_V.slopes[i] > temp_k){
+            truncated_V.con_index.push_back(i);
+        }
+        temp_k = truncated_V.slopes[i];
+    }
+    truncated_V.con_index.push_back(truncated_V.NbSegs);
+    truncated_V.NbConsegs = truncated_V.con_index.size()-1;
+}
+
+void Curve::shift(const double& V){
+    auto it = this->y.begin();
+    while (it != y.end()){
+        *it += V;
+        it++;
     }
 }
