@@ -21,14 +21,14 @@ int main(int argc, char* argv[]){
     ave_file.open(ave_output, ios::out|ios::trunc);
     ave_file << "I,K,best_min,best_max,best_ave,worst_min,worst_max,worst_ave" << endl;
     ave_file.close();
-    for (NbHotels = 20; NbHotels <= 100; NbHotels += 20){
-        for (NbTypes = 4; NbTypes <= 15; NbTypes++){
+    for (NbHotels = 20; NbHotels <= 20; NbHotels += 20){
+        for (NbTypes = 9; NbTypes <= 9; NbTypes++){
             double best_min = 999999999;
             double worst_min = 999999999;
             double best_max = 0;
             double worst_max = 0;
             double best_ave, worst_ave;
-            for (int instance = 1; instance <= 5; instance++){
+            for (int instance = 3; instance <= 3; instance++){
                 string file_name = root+to_string(NbHotels) + "_" + to_string(NbTypes) + "_" + to_string(instance) + ".csv"; 
                 double gamma;
                 vector<double> demand;
@@ -198,7 +198,7 @@ int main(int argc, char* argv[]){
                 IloCplex so_cplex(so_model);
                 ue_cplex.setOut(env.getNullStream());
                 so_cplex.setOut(env.getNullStream());
-                ue_cplex.setParam(IloCplex::Param::TimeLimit, 3600);
+                ue_cplex.setParam(IloCplex::Param::TimeLimit, 10);
 
                 //* obtain the SO result
                 obj.setSense(IloObjective::Minimize);
@@ -219,14 +219,14 @@ int main(int argc, char* argv[]){
                     best_assign = ue_cplex.getObjValue();
                 } else {
                     best_assign = -ue_cplex.getObjValue();
-                    //cout << "I = " << NbHotels << " K = " << NbTypes << " instance = " << instance << " UE infeasible." << endl;
+                    cout << "I = " << NbHotels << " K = " << NbTypes << " instance = " << instance << " UE infeasible." << endl;
                 }
                 obj_assignment.setSense(IloObjective::Maximize);
                 if (ue_cplex.solve()){
                     worst_assign = ue_cplex.getObjValue();
                 } else {
                     worst_assign = -ue_cplex.getObjValue();
-                    //cout << "I = " << NbHotels << " K = " << NbTypes << " instance = " << instance << " UE infeasible." << endl;
+                    cout << "I = " << NbHotels << " K = " << NbTypes << " instance = " << instance << " UE infeasible." << endl;
                 }
                 ue_model.remove(obj_assignment);
 
@@ -237,14 +237,14 @@ int main(int argc, char* argv[]){
                     best_misplace = ue_cplex.getObjValue();
                 } else {
                     best_misplace = -ue_cplex.getObjValue();
-                    //cout << "I = " << NbHotels << " K = " << NbTypes << " instance = " << instance << " UE infeasible." << endl;
+                    cout << "I = " << NbHotels << " K = " << NbTypes << " instance = " << instance << " UE infeasible." << endl;
                 }
                 obj_misplacement.setSense(IloObjective::Maximize);
                 if (ue_cplex.solve()){
                     worst_misplace = ue_cplex.getObjValue();
                 } else {
                     worst_misplace = -ue_cplex.getObjValue();
-                    //cout << "I = " << NbHotels << " K = " << NbTypes << " instance = " << instance << " UE infeasible." << endl;
+                    cout << "I = " << NbHotels << " K = " << NbTypes << " instance = " << instance << " UE infeasible." << endl;
                 }
                 ue_model.remove(obj_misplacement);
 
@@ -259,7 +259,7 @@ int main(int argc, char* argv[]){
                     best = ue_cplex.getObjValue();
                 } else {
                     best = -ue_cplex.getObjValue();
-                    //cout << "I = " << NbHotels << " K = " << NbTypes << " instance = " << instance << " UE infeasible." << endl;
+                    cout << "I = " << NbHotels << " K = " << NbTypes << " instance = " << instance << " UE infeasible." << endl;
                 }
 
                 //* obtain the worst obj under UE, timing
@@ -272,7 +272,7 @@ int main(int argc, char* argv[]){
                     worst = ue_cplex.getObjValue();
                 } else {
                     worst = -ue_cplex.getObjValue();
-                    //cout << "I = " << NbHotels << " K = " << NbTypes << " instance = " << instance << " UE infeasible." << endl;
+                    cout << "I = " << NbHotels << " K = " << NbTypes << " instance = " << instance << " UE infeasible." << endl;
                 }
                 file.open(output, ios::out|ios::app);
                 file << NbHotels << "," << NbTypes << "," << instance << "," << so_assignment << "," << so_misplace << "," << so_obj << "," << best_assign << "," << worst_assign << "," << best_misplace << "," << worst_misplace << "," << best << "," << worst << "," << time_best << "," << time_worst << endl;
