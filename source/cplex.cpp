@@ -16,9 +16,15 @@ int main(int argc, char* argv[]){
     file.open(output, ios::out|ios::trunc);
     file << "I,K,instance, so_assignment, so_misplace, so_obj, best_assign, worst_assign, best_misplace, worst_misplace, best, worst, time_best, time_worst" << endl;
     file.close();
+<<<<<<< HEAD
     for (NbHotels = 20; NbHotels <= 40; NbHotels += 20){
         for (NbTypes = 4; NbTypes <= 5; NbTypes++){
             for (int instance = 1; instance <= 5; instance++){
+=======
+    for (NbHotels = 20; NbHotels <= 20; NbHotels += 20){
+        for (NbTypes = 4; NbTypes <= 4; NbTypes++){
+            for (int instance = 1; instance <= 1; instance++){
+>>>>>>> f21f7f81f3f6a0daf2d122d4dff2a979b24af029
                 string file_name = root+to_string(NbHotels) + "_" + to_string(NbTypes) + "_" + to_string(instance) + ".csv"; 
                 double gamma;
                 vector<double> demand;
