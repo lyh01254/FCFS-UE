@@ -12,7 +12,7 @@ void read(int &para, string file_name, int r_index, int c_index){
             throw "r_index exceeds range!";
         };
     }
-    cout << "get pass" << endl;
+    
     stringstream ss(line_string);
     string str;
     for (int i = 0; i < c_index+1; i++){
@@ -22,7 +22,6 @@ void read(int &para, string file_name, int r_index, int c_index){
     }
     para = stoi(str);
     infile.close();
-    cout << "Reading completes." << endl;
 }
 
 void read(double &para, string file_name, int r_index, int c_index){
@@ -45,7 +44,6 @@ void read(double &para, string file_name, int r_index, int c_index){
     }
     para = stod(str);
     infile.close();
-    cout << "Reading completes." << endl;
 }
 
 void read(vector<int> &para, string file_name, int r_index0, int c_index0, int r_index1, int c_index1){
@@ -73,7 +71,6 @@ void read(vector<int> &para, string file_name, int r_index0, int c_index0, int r
             throw "r_index exceeds range!";
         }
     }
-    cout << "Reading completes." << endl;
 }
 
 void read(vector<double> &para, string file_name, int r_index0, int c_index0, int r_index1, int c_index1){
@@ -101,7 +98,6 @@ void read(vector<double> &para, string file_name, int r_index0, int c_index0, in
             throw "r_index exceeds range!";
         }
     }
-    cout << "Reading completes." << endl;
 }
 
 void read(vector<vector<int>> &para, string file_name, int r_index0, int c_index0, int r_index1, int c_index1){
@@ -131,7 +127,6 @@ void read(vector<vector<int>> &para, string file_name, int r_index0, int c_index
             throw "r_index exceeds range!";
         }
     }
-    cout << "Reading completes." << endl;
 }
 
 void read(vector<vector<double>> &para, string file_name, int r_index0, int c_index0, int r_index1, int c_index1){
@@ -161,6 +156,5 @@ void read(vector<vector<double>> &para, string file_name, int r_index0, int c_in
             throw "r_index exceeds range!";
         }
     }
-    cout << "Reading completes." << endl;
 }
 
