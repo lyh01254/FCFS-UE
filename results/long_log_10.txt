@@ -1,0 +1,16 @@
+LOG
+Start to solve60_16_1
+Start to solve60_16_2
+Start to solve60_16_3
+Start to solve60_16_4
+Start to solve60_16_5
+Start to solve80_16_1
+Start to solve80_16_2
+Start to solve80_16_3
+Start to solve80_16_4
+Start to solve80_16_5
+Start to solve100_16_1
+Start to solve100_16_2
+Start to solve100_16_3
+Start to solve100_16_4
+Start to solve100_16_5

@@ -1,0 +1,26 @@
+LOG
+Start to solve20_16_1
+Start to solve20_16_2
+Start to solve20_16_3
+Start to solve20_16_4
+Start to solve20_16_5
+Start to solve40_16_1
+Start to solve40_16_2
+Start to solve40_16_3
+Start to solve40_16_4
+Start to solve40_16_5
+Start to solve60_16_1
+Start to solve60_16_2
+Start to solve60_16_3
+Start to solve60_16_4
+Start to solve60_16_5
+Start to solve80_16_1
+Start to solve80_16_2
+Start to solve80_16_3
+Start to solve80_16_4
+Start to solve80_16_5
+Start to solve100_16_1
+Start to solve100_16_2
+Start to solve100_16_3
+Start to solve100_16_4
+Start to solve100_16_5
