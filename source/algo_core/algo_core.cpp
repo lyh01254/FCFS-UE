@@ -1,61 +1,11 @@
-#include"common.h"
-#include"myIOS.h"
-#include"curve.h"
-#include<fstream>
-#include<numeric>
-#include<algorithm>
+#include"algo_core.h"
 
-int NbHotels, NbTypes;
-double gamma;
-std::vector<double> demand;
-std::vector<std::vector<double> > capacity;
-std::vector<double> cost;
-std::vector<double> Capacity_by_k;
-std::vector<bool> is_excess;
-std::vector<int> excess_types;
-std::vector<int> surplus_type;
-double direct_misplace;
-double total_surplus;
-std::vector<double> difference;
-Curve best_curve;
-double best_surplus;
-double so_assignment = 0;
-double so_misplace = 0;
-double so_obj = 0;
-double best_assign = 0;
-double worst_assign = 0;
-double best_misplace = 0;
-double worst_misplace = 0;
-double best = 0;
-double worst = 0;
-double excess_tsp_value = 0;
-double worst_ub = 0;
-double worst_lb = 0;
-
-void set_parameters(std::string filename = "");
-void light_solve(const std::vector<int>& sequence, const std::vector<Curve>& v);
-void light_enumerate(std::vector<int>& sequence, int start, const std::vector<Curve>& v);
-void light_surplus_solve();
-double excess_tsp();
-double surplus_tsp(std::vector<double>& worst_assign_by_type);
-void solve(std::string input = "");
-void best_UE();
-void worst_UE();
-
-void solve(std::string input = ""){
-    set_parameters(input);
-    best_assign = 0;
-    worst_assign = 0;
-    best_misplace = 0;
-    worst_misplace = 0;
-    best = 0;
-    worst = 0;
-    excess_tsp_value = 0;
+void Algo::package_solve(const std::string input = ""){
     best_UE();
-    worst_UE(); 
+    worst_UE();
 }
 
-void best_UE(){
+void Algo::best_UE(){
     std::vector<double> Q_k(demand);
     std::vector<std::vector<double> > C(capacity);
     std::vector<int> cost_index(NbHotels);
@@ -100,46 +50,14 @@ void best_UE(){
     best = best_assign + best_misplace * gamma;    
 }
 
-void worst_UE(){
-    //* obtain the worst obj under UE, timing
-    direct_misplace = 0;
-    total_surplus = 0;
-    double excess_assignment_cost = 0;
-    
-    for (int k = 0; k < NbTypes; k++){
-        Capacity_by_k.push_back(0);
-        double temp = 0;
-        for (int i = 0; i < NbHotels; i++){
-            Capacity_by_k[k] += capacity[i][k];
-            temp += capacity[i][k] * cost[i];
-        }
-        difference.push_back(demand[k] - Capacity_by_k[k]);
-        if (difference.back() >= 0){
-            is_excess.push_back(true);
-            excess_types.push_back(k);
-            direct_misplace += difference.back();
-            excess_assignment_cost += temp;
-        } else {
-            is_excess.push_back(false);
-            surplus_type.push_back(k);
-            total_surplus -= difference.back();
-        }
-    }
+void Algo::worst_UE(){
     best_surplus = 0;
     light_surplus_solve();
     excess_tsp_value = excess_tsp();
     worst = best_surplus + excess_tsp_value * gamma + excess_assignment_cost;   
 }
 
-void set_parameters(std::string filename = ""){
-    demand.clear();
-    capacity.clear();
-    cost.clear();
-    Capacity_by_k.clear();
-    is_excess.clear();
-    excess_types.clear();
-    surplus_type.clear();
-    difference.clear();
+void Algo::set_parameters(const std::string filename = ""){
     if (filename == ""){
         NbHotels = 4;
         NbTypes = 3;
@@ -162,7 +80,33 @@ void set_parameters(std::string filename = ""){
     }
 }
 
-double excess_tsp(){
+void Algo::pre_process(){
+    direct_misplace = 0;
+    total_surplus = 0;
+    excess_assignment_cost = 0;
+    
+    for (int k = 0; k < NbTypes; k++){
+        Capacity_by_k.push_back(0);
+        double temp = 0;
+        for (int i = 0; i < NbHotels; i++){
+            Capacity_by_k[k] += capacity[i][k];
+            temp += capacity[i][k] * cost[i];
+        }
+        difference.push_back(demand[k] - Capacity_by_k[k]);
+        if (difference.back() >= 0){
+            is_excess.push_back(true);
+            excess_types.push_back(k);
+            direct_misplace += difference.back();
+            excess_assignment_cost += temp;
+        } else {
+            is_excess.push_back(false);
+            surplus_type.push_back(k);
+            total_surplus -= difference.back();
+        }
+    }    
+}
+
+double Algo::excess_tsp(){
     std::vector<double> V_E (1<<excess_types.size(), 0);
     std::vector<double> D (1<<excess_types.size(), 0);
     D[0] = direct_misplace;
@@ -188,7 +132,7 @@ double excess_tsp(){
     return V_E.back();
 }
 
-double surplus_tsp(std::vector<double>& worst_assign_by_type){
+double Algo::surplus_tsp(std::vector<double>& worst_assign_by_type){
     std::vector<double> V_S (1<<surplus_type.size(), 0);
     std::vector<double> surplus_S (1<<surplus_type.size(), 0);
     for (int i = 1; i < V_S.size(); i++){
@@ -225,7 +169,7 @@ double surplus_tsp(std::vector<double>& worst_assign_by_type){
     return V_S.back();
 }
 
-void light_solve(const std::vector<int>& sequence, const std::vector<Curve>& v){
+void Algo::light_solve(const std::vector<int>& sequence, const std::vector<Curve>& v){
     auto it = sequence.end()-1;
     Curve V;
     v2V(V, v[surplus_type[*it]]);
@@ -248,7 +192,7 @@ void light_solve(const std::vector<int>& sequence, const std::vector<Curve>& v){
     }
 }
 
-void light_enumerate(std::vector<int>& sequence, int start, const std::vector<Curve>& v){
+void Algo::light_enumerate(std::vector<int>& sequence, int start, const std::vector<Curve>& v){
     if (start == sequence.size()-1) {
         //display(sequence, "sequence to be checked:");
         light_solve(sequence, v);
@@ -265,7 +209,7 @@ void light_enumerate(std::vector<int>& sequence, int start, const std::vector<Cu
     }
 }
 
-void light_surplus_solve(){
+void Algo::light_surplus_solve(){
     std::vector<Curve> v(NbTypes);
     find_v(v,demand, capacity, cost, gamma);
     std::vector<int> sequence(surplus_type.size());
