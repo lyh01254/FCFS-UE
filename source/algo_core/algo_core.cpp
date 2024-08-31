@@ -1,6 +1,6 @@
 #include"algo_core.h"
 
-void Algo::package_solve(const std::string input = ""){
+void Algo::blanket_solve(const std::string input = ""){
     best_UE();
     worst_UE();
 }
@@ -215,4 +215,182 @@ void Algo::light_surplus_solve(){
     std::vector<int> sequence(surplus_type.size());
     iota(sequence.begin(), sequence.end(), 0);
     light_enumerate(sequence, 0, v);
+}
+
+void Algo::worst_assign_UE(){
+    //* obtain the worst assignment under UE
+    std::vector<double> Q_k(demand);
+    std::vector<std::vector<double> > C(capacity);
+    std::vector<int> cost_index(NbHotels);
+    std::vector<std::vector<std::vector<double> > > assign(NbHotels, std::vector<std::vector<double> > (NbTypes, std::vector<double> (NbTypes, 0)));
+    std::iota(cost_index.begin(), cost_index.end(), 0);
+    std::sort(cost_index.begin(), cost_index.end(), [&](int i, int j){return cost[i] > cost[j];});
+    double sum_Q = accumulate(Q_k.begin(), Q_k.end(), 0);
+    auto it1 = cost_index.begin();
+    auto it2 = cost_index.begin();
+    while (sum_Q > 0){
+        if (it1 != cost_index.end()){
+            //* *it1 = i_star
+            for (int w = 0; w < NbTypes; w++){
+                if (C[*it1][w] > 0){
+                    assign[*it1][w][w] = std::min(Q_k[w], C[*it1][w]);
+                    C[*it1][w] -= assign[*it1][w][w];
+                    Q_k[w] -= assign[*it1][w][w];
+                    sum_Q -= assign[*it1][w][w];
+                    worst_assign += assign[*it1][w][w] * cost[*it1];
+                }
+            }
+            it1++;
+        } else {
+            //* *it2 = i_star
+            for (int w = 0; w < NbTypes; w++){
+                if (C[*it2][w] > 0){
+                    for (int k = 0; k < NbTypes; k++){
+                        if (k != w && Q_k[k] > 0 && C[*it2][w] > 0){
+                            assign[*it2][k][w] = std::min(Q_k[k], C[*it2][w]);
+                            C[*it2][w] -= assign[*it2][k][w];
+                            Q_k[k] -= assign[*it2][k][w];
+                            sum_Q -= assign[*it2][k][w];
+                            worst_assign += assign[*it2][k][w] * cost[*it2];
+                        }
+                    }
+                }
+            }
+            it2++;
+        }
+    }
+}
+
+void Algo::compute_bounds(){
+    //* obtain the worst misplace under UE
+    std::vector<int> cost_index(NbHotels);
+    std::iota(cost_index.begin(), cost_index.end(), 0);
+    std::sort(cost_index.begin(), cost_index.end(), [&](int i, int j){return cost[i] > cost[j];});
+    std::vector<double> worst_assign_by_type(NbTypes, 0);
+    for (int k = 0; k < NbTypes; k++){
+        if (is_excess[k]){
+            worst_assign_by_type[k] = Capacity_by_k[k];
+        }
+    }
+    worst_misplace = excess_tsp() + surplus_tsp(worst_assign_by_type) + direct_misplace;
+    worst_ub = worst_assign + worst_misplace * gamma;
+    double worst_assign_con = 0;
+    for (int k = 0; k < NbTypes; k++){
+        if (worst_assign_by_type[k] == Capacity_by_k[k]){
+            for (int i = 0; i < NbHotels; i++){
+                worst_assign_con += capacity[i][k] * cost[i];
+            }
+        } else if (worst_assign_by_type[k] < Capacity_by_k[k]){
+            auto it3 = cost_index.begin();
+            double a_k = worst_assign_by_type[k];
+            while (a_k > 0) {
+                worst_assign_con += std::min(a_k, capacity[*it3][k]) * cost[*it3];
+                a_k -= std::min(a_k, capacity[*it3][k]);
+                it3++;
+            }
+        }
+    }
+    worst_lb = worst_misplace * gamma + worst_assign_con;
+}
+
+void Algo::show_parameters(){
+    display(demand, "Demand");
+    display(cost, "Cost");
+    display(capacity, "Capacity");
+    std::cout << "gamma = " << gamma << std::endl;
+}
+
+const double Algo::sample(){
+    show_parameters();
+
+    //todo: set up necessary variables 
+    int r_NbUsers = std::accumulate(demand.begin(), demand.end(), 0);
+    std::vector<int> r_NbResource_by_type(NbTypes);
+
+    for (int k = 0; k < NbTypes; k++){
+        r_NbResource_by_type[k] = 0;
+        for (int i = 0; i < NbHotels; i++){
+            r_NbResource_by_type[k] += capacity[i][k];
+        }
+    }
+
+    std::vector<int> r_users(r_NbUsers); //list of all users:  [0,0,0,1,1,2,2,2,2,2]
+    auto it_user = r_users.begin();
+    for (int k = 0; k < NbTypes; k++){
+        std::fill(it_user, it_user + demand[k], k);
+        it_user += demand[k];
+    }
+
+    int r_NbTypes = NbTypes;
+    std::vector<int> r_types(NbTypes);
+    std::iota(r_types.begin(), r_types.end(), 0); //list of types that has remaining capacity
+    std::vector<std::vector<int>> r_resource(NbTypes); //list of unit resources by types * location: [[0,0,0,1,1,1],[1,1,2,2,2,2]]
+
+    for (int k = 0; k < NbTypes; k++){
+        r_resource[k] = std::vector<int> (r_NbResource_by_type[k]);
+        auto it = r_resource[k].begin();
+        for (int i = 0; i < NbHotels; i++){
+            std::fill(it, it + capacity[i][k], i);
+            it += capacity[i][k];
+        }
+    }
+
+    std::vector<std::vector<std::vector<double>>> assignment(NbHotels, std::vector<std::vector<double>> (NbTypes, std::vector<double> (NbTypes, 0)));
+
+    display(r_NbResource_by_type, "r_NbRes_byType");
+    display(r_users, "r_users");
+    display(r_types, "r_types");
+    display(r_resource, "r_resource");
+
+    //todo: sample
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    double total_cost = 0;
+    std::vector<int> index_by_type(r_types);
+
+    while (r_NbUsers > 0){
+        //* 1. sample user
+        std::uniform_int_distribution<> user_dis(0, r_NbUsers-1);
+        int user_index = user_dis(gen);
+        int user_type = r_users[user_index];
+        r_users[user_index] = r_users[r_NbUsers-1];
+        r_NbUsers --;
+
+        //* 2. sample resource
+        int type_index, resource_type, facility_index, facility;
+        //* 2.1 sample resource type
+        if (r_NbResource_by_type[user_type] > 0){
+            resource_type = user_type;
+            type_index = index_by_type[resource_type];
+        } else {
+            std::uniform_int_distribution<> type_dis(0, r_NbTypes-1);
+            type_index = type_dis(gen);
+            resource_type = r_types[type_index];
+            total_cost += gamma;
+        }
+        //* 2.2 sample facility
+        std::uniform_int_distribution<> facility_dis(0, r_NbResource_by_type[resource_type]-1);
+        facility_index = facility_dis(gen);
+        facility = r_resource[resource_type][facility_index];
+        //* delete the capacity
+        r_resource[resource_type][facility_index] = r_resource[resource_type][r_NbResource_by_type[resource_type]-1];
+        r_NbResource_by_type[resource_type] --;
+        if (r_NbResource_by_type[resource_type] == 0) {
+            //* delete the type
+            r_types[type_index] = r_types[r_NbTypes-1];
+            index_by_type[r_types[type_index]] = type_index;
+            r_NbTypes --;
+        }
+        assignment[facility][user_type][resource_type]++;
+        total_cost += cost[facility];
+    }
+    //std::cout << "Cost = " << total_cost << std::endl;
+    return total_cost;    
+}
+
+void Algo::simulate(const int& NbSamples){
+    for (int s = 0; s < NbSamples; s++){
+        sampled_cost.push_back(sample());
+    }
 }

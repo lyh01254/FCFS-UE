@@ -3,6 +3,7 @@
 #include"myIOS.h"
 #include"curve.h"
 #include<fstream>
+#include<random>
 
 class Algo{
 private:
@@ -26,9 +27,6 @@ private:
     //*Calculation results
     Curve best_curve;
     double best_surplus;
-    double so_assignment = 0;
-    double so_misplace = 0;
-    double so_obj = 0;
     double best_assign = 0;
     double worst_assign = 0;
     double best_misplace = 0;
@@ -38,8 +36,10 @@ private:
     double excess_tsp_value = 0;
     double worst_ub = 0;
     double worst_lb = 0;
+    std::vector<double> sampled_cost;
 
 public:
+    //default constructor: since all members have their default constructor, Algo need not have one.
     void set_parameters(const std::string filename = "");
     void pre_process();
     void light_solve(const std::vector<int>& sequence, const std::vector<Curve>& v);
@@ -47,9 +47,14 @@ public:
     void light_surplus_solve();
     double excess_tsp();
     double surplus_tsp(std::vector<double>& worst_assign_by_type);
-    void package_solve(const std::string input = "");
+    void blanket_solve(const std::string input = "");
     void best_UE();
     void worst_UE();
+    void simulate(const int& NbSamples);
+    const double sample();
+    void show_parameters();
+    void compute_bounds();
+    void worst_assign_UE();
 
     //*primary parameters: getters and setters
     int getNbHotels() const { return NbHotels; }
@@ -80,9 +85,6 @@ public:
     const std::vector<double>& getDifference() const { return difference; }
     const Curve& getBestCurve() const { return best_curve; }
     double getBestSurplus() const { return best_surplus; }
-    double getSoAssignment() const { return so_assignment; }
-    double getSoMisplace() const { return so_misplace; }
-    double getSoObj() const { return so_obj; }
     double getBestAssign() const { return best_assign; }
     double getWorstAssign() const { return worst_assign; }
     double getBestMisplace() const { return best_misplace; }

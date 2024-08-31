@@ -158,3 +158,53 @@ void read(vector<vector<double>> &para, string file_name, int r_index0, int c_in
     }
 }
 
+void set_header(std::string file_name, std::vector<std::string> fields){
+    std::ofstream file;
+    file.open(file_name, std::ios::out|std::ios::trunc);
+    if (file.is_open()){
+        std::string header;
+        for (int i = 0; i < fields.size()-1; i++){
+            header = header + fields[i] + ",";
+        }
+        header += fields.back();
+        file << header << std::endl;
+        file.close();
+    } else {
+        std::cout << "Failed to open file " << file_name << endl; 
+    }
+}
+
+void append_row(std::string file_name, std::vector<std::string> row){
+    std::ofstream file;
+    file.open(file_name, std::ios::out|std::ios::app);
+    if (file.is_open()){
+        std::string row_string;
+        for (int i = 0; i < row.size()-1; i++){
+            row_string = row_string + row[i] +",";
+        }
+        row_string += row.back();
+        file << row_string << std::endl;
+        file.close();
+    } else {
+        std::cout << "Failed to open file " << file_name << endl; 
+    }
+}
+
+void append_matrix(std::string file_name, std::vector<std::vector<std::string>> matrix){
+    std::ofstream file;
+    file.open(file_name, std::ios::out|std::ios::app);
+    if (file.is_open()) {
+        for (int i = 0; i < matrix.size(); i++){
+            std::string row;
+            for (int j = 0; j < matrix[i].size()-1; j++){
+                row = row + matrix[i][j] + ",";
+            }
+            row += matrix[i].back();
+            file << row << endl;
+        }
+        file.close();
+    } else {
+        std::cout << "Failed to open file " << file_name << endl; 
+    }
+}
+
