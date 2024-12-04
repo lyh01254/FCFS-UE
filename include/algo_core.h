@@ -4,6 +4,7 @@
 #include"curve.h"
 #include<fstream>
 #include<random>
+#include "ilcplex/ilocplex.h"
 
 class Algo{
 private:
@@ -40,6 +41,7 @@ private:
 
 public:
     //default constructor: since all members have their default constructor, Algo need not have one.
+    double cplex_solve();
     void set_parameters(const std::string filename = "");
     void pre_process();
     void light_solve(const std::vector<int>& sequence, const std::vector<Curve>& v);
@@ -52,6 +54,8 @@ public:
     void worst_UE();
     void simulate(const int& NbSamples);
     const double sample();
+    const double ad_sample();
+    const double customed_sample(const std::vector<int>& order);
     void show_parameters();
     void compute_bounds();
     void worst_assign_UE();

@@ -5,16 +5,15 @@
 #include"common.h"
 
 int NbHotels, NbTypes, gamma;
-
 void generate_cost(std::vector<int>& cost, const double& lb, const double& ub);
 int generate_gamma(const std::vector<int>& cost);
-void generate_capacity(std::vector<std::vector<int>>& capacity, const int& min_K, const double& lb, const double& ub);
-void generate_demand(std::vector<int>& demand, const std::vector<std::vector<int>>& capacity, const double& excess_rate, const double& surplus_rate);
-void write(const std::string& folder, const std::string& filename, const std::vector<int>& demand, const std::vector<std::vector<int>>& capacity, const std::vector<int> cost, const int& gamma);
-void generate_long(std::vector<int>& demand, const std::vector<std::vector<int>>& capacity, const int& NbSurplus, const double& excess_rate, const double& surplus_rate);
+void generate_capacity(std::vector<std::vector<int> >& capacity, const int& min_K, const double& lb, const double& ub);
+void generate_demand(std::vector<int>& demand, const std::vector<std::vector<int> >& capacity, const double& excess_rate, const double& surplus_rate);
+void write(const std::string& folder, const std::string& filename, const std::vector<int>& demand, const std::vector<std::vector<int> >& capacity, const std::vector<int> cost, const int& gamma);
+void generate_long(std::vector<int>& demand, const std::vector<std::vector<int> >& capacity, const int& NbSurplus, const double& excess_rate, const double& surplus_rate);
 void generate_cost_variance();
 void generate_excess_variance();
-void generate_demand(std::vector<int>& demand, const std::vector<std::vector<int>>& capacity, const double& excess_lb, const double& excess_ub, const double& surplus_lb, const double& surplus_ub);
+void generate_demand(std::vector<int>& demand, const std::vector<std::vector<int> >& capacity, const double& excess_lb, const double& excess_ub, const double& surplus_lb, const double& surplus_ub);
 
 int main(){
     generate_excess_variance();
@@ -36,7 +35,7 @@ void normal_generate(){
                     int MIN_K = std::max(NbTypes/2, 4);
                     std::vector<int> cost(NbHotels, 0);
                     std::vector<int> demand(NbTypes, 0);
-                    std::vector<std::vector<int>> capacity(NbHotels, std::vector<int>(NbTypes, 0));
+                    std::vector<std::vector<int> > capacity(NbHotels, std::vector<int>(NbTypes, 0));
                     generate_cost(cost, MIN_COST, MAX_COST);
                     int gamma = generate_gamma(cost);
                     generate_capacity(capacity, MIN_K, MIN_CAPACITY, MAX_CAPACITY);
@@ -63,7 +62,7 @@ void generate_excess_variance(){
     int MIN_K = std::max(NbTypes/2, 4);
     std::vector<int> cost(NbHotels, 0);
     std::vector<int> demand(NbTypes, 0);
-    std::vector<std::vector<int>> capacity(NbHotels, std::vector<int>(NbTypes, 0));
+    std::vector<std::vector<int> > capacity(NbHotels, std::vector<int>(NbTypes, 0));
     generate_capacity(capacity, MIN_K, MIN_CAPACITY, MAX_CAPACITY);
     generate_cost(cost, MIN_COST, MAX_COST);
     int gamma = generate_gamma(cost);
@@ -72,7 +71,7 @@ void generate_excess_variance(){
         for (int instance = 1; instance <= 10; instance++){
             generate_demand(demand, capacity, 0.5-EXCESS_RATE, EXCESS_RATE, 0.5-SURPLUS_RATE, SURPLUS_RATE);
             std::string filename = std::to_string(NbHotels) + "_" + std::to_string(NbTypes) + "_" + std::to_string(rate) + "_" + std::to_string(instance) + ".csv";
-            std::string folder = "data/excess/";
+            std::string folder = "data/excess2/";
             write(folder, filename, demand, capacity, cost, gamma);
         }
     }
@@ -112,7 +111,7 @@ int generate_gamma(const std::vector<int>& cost){
     return dis(gen);
 }
 
-void generate_capacity(std::vector<std::vector<int>>& capacity, const int& min_K, const double& lb, const double& ub){
+void generate_capacity(std::vector<std::vector<int> >& capacity, const int& min_K, const double& lb, const double& ub){
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis_K(min_K, NbTypes);
@@ -129,7 +128,7 @@ void generate_capacity(std::vector<std::vector<int>>& capacity, const int& min_K
     }
 }
 
-void generate_demand(std::vector<int>& demand, const std::vector<std::vector<int>>& capacity, const double& excess_rate, const double& surplus_rate) {
+void generate_demand(std::vector<int>& demand, const std::vector<std::vector<int> >& capacity, const double& excess_rate, const double& surplus_rate) {
     int sum_C = 0;
     std::vector<int> C_k(NbTypes, 0);
     for (int k = 0; k < NbTypes; k++){
@@ -168,7 +167,7 @@ void generate_demand(std::vector<int>& demand, const std::vector<std::vector<int
     }
 }
 
-void generate_demand(std::vector<int>& demand, const std::vector<std::vector<int>>& capacity, const double& excess_lb, const double& excess_ub, const double& surplus_lb, const double& surplus_ub) {
+void generate_demand(std::vector<int>& demand, const std::vector<std::vector<int> >& capacity, const double& excess_lb, const double& excess_ub, const double& surplus_lb, const double& surplus_ub) {
     int sum_C = 0;
     std::vector<int> C_k(NbTypes, 0);
     for (int k = 0; k < NbTypes; k++){
@@ -206,7 +205,7 @@ void generate_demand(std::vector<int>& demand, const std::vector<std::vector<int
     }
 }
 
-void generate_long(std::vector<int>& demand, const std::vector<std::vector<int>>& capacity, const int& NbSurplus, const double& excess_rate, const double& surplus_rate) {
+void generate_long(std::vector<int>& demand, const std::vector<std::vector<int> >& capacity, const int& NbSurplus, const double& excess_rate, const double& surplus_rate) {
     int sum_C = 0;
     std::vector<int> C_k(NbTypes, 0);
     for (int k = 0; k < NbTypes; k++){
@@ -245,19 +244,23 @@ void generate_long(std::vector<int>& demand, const std::vector<std::vector<int>>
     }
 }
 
-void write(const std::string& folder, const std::string& filename, const std::vector<int>& demand, const std::vector<std::vector<int>>& capacity, const std::vector<int> cost, const int& gamma){
+void write(const std::string& folder, const std::string& filename, const std::vector<int>& demand, const std::vector<std::vector<int> >& capacity, const std::vector<int> cost, const int& gamma){
     std::ofstream file;
     file.open(folder+filename, std::ios::out|std::ios::trunc);
-    file << NbHotels << "," << NbTypes << "," << gamma << std::endl;
-    for (int k = 0; k < NbTypes-1; k++){
-        file << demand[k] << ",";
-    }
-    file << demand[NbTypes - 1] << std::endl;
-    for (int i = 0; i < NbHotels; i++){
-        for (int w = 0; w < NbTypes; w++){
-            file << capacity[i][w] << ",";
+    if (file.is_open()){
+        file << NbHotels << "," << NbTypes << "," << gamma << std::endl;
+        for (int k = 0; k < NbTypes-1; k++){
+            file << demand[k] << ",";
         }
-        file << cost[i] << std::endl;
+        file << demand[NbTypes - 1] << std::endl;
+        for (int i = 0; i < NbHotels; i++){
+            for (int w = 0; w < NbTypes; w++){
+                file << capacity[i][w] << ",";
+            }
+            file << cost[i] << std::endl;
+        }
+        file.close();
+    } else {
+        std::cout << "Failed to open file: " << folder+filename << std::endl;
     }
-    file.close();
 }

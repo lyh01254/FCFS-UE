@@ -54,6 +54,14 @@
         "numbers": "cpp",
         "charconv": "cpp",
         "chrono": "cpp",
-        "cuchar": "cpp"
-    }
+        "cuchar": "cpp",
+        "deque": "cpp",
+        "memory": "cpp",
+        "print": "cpp",
+        "queue": "cpp",
+        "stack": "cpp",
+        "forward_list": "cpp"
+    },
+    "makefile.configureOnOpen": false,
+    "C_Cpp.default.compilerPath": "/usr/bin/clang++"
 }
